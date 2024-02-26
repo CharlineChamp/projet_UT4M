@@ -1,6 +1,6 @@
-# UT4M_psycho
+# Projet UT4M
 
-UT4M_psycho est né dans le cadre d’un projet tutoré réalisé lors de notre deuxième en master Statistique et Sciences des données. 
+Le projet UT4M est né dans le cadre d’un projet tutoré réalisé lors de notre deuxième en master Statistique et Sciences des données. 
 Ce projet vise à étudier les performances sportives à travers la psychologie et la glycémie du coureur lors de l’UT4M 2023.
 
 ## Objectifs du projet 
@@ -21,4 +21,4 @@ Chaque dossier comporte plusieurs versions. Nous utilisons à chaque fois la plu
 
 ## Auteurs
 
-[Océane Baboulaz](https://github.com/Oceane-Baboulaz), [Alice Chauveau](https://github.com/AliceChauveau), [Charline Champ](https://github.com/CharlineChamp) et [Morgane Maulet](https://github.com/Morgane-mlt)
+[Océane Baboulaz](https://github.com/Oceane-Baboulaz), [Alice Chauveau](https://github.com/AliceChauveau) et [Charline Champ](https://github.com/CharlineChamp) 
