@@ -118,24 +118,3 @@ df_brute <- df_brute[order(df_brute$`1. Quel_est_votre_numero_de_participante_de
 write.csv2(df_brute, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/Données_course -psycho-alim/data_scoreV1.csv", row.names = FALSE)
 
 
-#-----------------------------------------------------------------#
-# Code utilisé pour capter les differences entre les noms de colonnes
-#-----------------------------------------------------------------#
-
-
-# # Liste de dataframes à combiner
-# list_of_dataframes <- list(df_brute, df_temp)  # Remplacez df1, df2, df3 par vos dataframes
-# 
-# # Vérifier les noms de colonnes pour chaque dataframe
-# for (i in seq_along(list_of_dataframes)) {
-#   if (i > 1) {
-#     previous_names <- colnames(list_of_dataframes[[i - 1]])
-#     current_names <- colnames(list_of_dataframes[[i]])
-#     
-#     # Vérifier si les noms de colonnes sont identiques
-#     if (!identical(previous_names, current_names)) {
-#       different_columns <- setdiff(previous_names, current_names)
-#       cat("Les noms de colonnes du dataframe", i - 1, "qui ne correspondent pas au dataframe", i, ":", different_columns, "\n")
-#     }
-#   }
-# }

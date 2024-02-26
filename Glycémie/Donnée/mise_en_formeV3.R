@@ -79,7 +79,7 @@ colnames(data_chrono) <- c("numero_participant",
                            "St- Nazaire-les Eymes",
                            "Grenoble")
 
-# Erreur d'importantio => récupération uniquement des heures
+# Erreur d'importantion => récupération uniquement des heures
 data_chrono$`Saint Nizier du Moucherotte` <- format(data_chrono$`Saint Nizier du Moucherotte`, format = "%H:%M:%S")
 data_chrono$`La Morte` <- format(data_chrono$`La Morte`, format = "%H:%M:%S")
 
@@ -126,7 +126,6 @@ data_score %<>%
   mutate(finisher = ifelse(!(numero_participant %in% abandon),"finisher","abandon"))
 
 # Ajout de la date de référence pour plus tard
-# Pas sur que cette ligne soit utile on verra plus tard
 data_score %<>%
   group_by(numero_participant) %>%
   mutate(date_reference = case_when(
@@ -201,60 +200,6 @@ data_km_section_score_denivele <- data_km_section_score %>%
 
 # ----------------------------------------------------------------------------- #
 # Calculer le temps par km en fonction des dénivelés
-# CalculAllure <- function(tSec,d=1,Dplus,Dmoins,dSec,DplusSec,DmoinsSec){
-#   # Cette fonction calcule le temps mis par km
-#   # tSec : temps mis pour la section
-#   # d : distance, parcouru par défaut égale à 1
-#   # Dplus : Dénivelé positif sur cette distance d
-#   # Dmoins : Dénivelé négatif sur cette distance d
-#   # dSec : distance de la section en km
-#   # DplusSec : Dénivelé positif de la section 
-#   # DmoinsSec : Dénivelé négatif de la section 
-#   
-#   # Calcul de la fonction nominale (VAP)
-#   
-#   # % de D+ sur la section
-#   p.Dplus.Sec = DplusSec/(DplusSec+DmoinsSec)
-#   
-#   # distance D+ de la section
-#   d.Dplus.Sec =p.Dplus.Sec*dSec 
-#   
-#   # Calcul de la pente moyenne de la section en %
-#   pente.Dplus.Sec = DplusSec/(10*d.Dplus.Sec)
-#   
-#   d.Dmoins.Sec = dSec - d.Dplus.Sec
-#   pente.Dmoins.Sec = DmoinsSec/(10*d.Dmoins.Sec)
-#   
-#   # Calcul de la vitesse nominale sur la section
-#   v.n = (d.Dplus.Sec*CoefVAP(pente.Dplus.Sec)+d.Dmoins.Sec*CoefVAP(pente.Dmoins.Sec))/tSec
-#   
-#   # % de D+ sur la distance d
-#   p.Dplus = Dplus/(Dplus+Dmoins)
-#   
-#   # Distance de montée
-#   d.Dplus = p.Dplus * d
-#   
-#   if(d.Dplus != 0){
-#     # Calcul pente sur la distance d
-#     pente.Dplus = Dplus/(10*d.Dplus)
-#   }else{
-#     pente.Dplus = 0
-#   }
-#   
-#   d.Dmoins = d - d.Dplus
-#   if(d.Dmoins != 0){
-#     pente.Dmoins = Dmoins/(10*d.Dmoins)
-#   }else{
-#     pente.Dmoins = 0
-#   }
-#   
-#   # Calcul sur le kilomètre 
-#   temps = d/v.n*(p.Dplus*CoefVAP(pente.Dplus)+(1-p.Dplus)*CoefVAP(pente.Dmoins))
-#   
-#   # On retourne en minute
-#   return(temps*60)
-#   
-# }
 
 CalculAllure <- function(tSec, d = 1, Dplus, Dmoins, dSec, DplusSec, DmoinsSec) {
   
@@ -320,16 +265,6 @@ data_km_section_score_denivele <- data_km_section_score_denivele %>%
       km == 175 ~ NA,
       TRUE ~ temps_par_km_minute
   ))
-# ) %>%
-#   mutate(
-#     temps_par_km_minute = case_when(
-#       km == 175 ~ temps_ecoule_en_heure * 60 - sum(temps_par_km_minute),
-#       TRUE ~ temps_par_km_minute
-#     )
-#   )
-
-
-
 
 # Créer une colonne "temps_en_minute_cumule" basée sur la distance parcourue
 data_km_section_score_denivele <- data_km_section_score_denivele %>%
@@ -402,12 +337,11 @@ for(i in 1:length(unique(data_km_section_score_denivele$numero_participant))){
 colnames(moy_glycemie) <- c("numero_participant", "km", "moy_glucose")
 
 # ----------------------------------------------------------------------------- #
-# Jointure entre ka moyenne glycémique et notre data score 
+# Jointure entre la moyenne glycémique et notre data score 
 
 data_km_section_score_glycemie <- data_km_section_score_denivele %>% left_join(moy_glycemie, by = c("numero_participant", "km"))
 
 # ----------------------------------------------------------------------------- #
 # Écrire le dataframe dans le fichier CSV
-write.csv2(data_km_section_score_glycemie, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/data_160V1.csv", row.names = FALSE, fileEncoding = "MacRoman")
 write.xlsx(data_km_section_score_glycemie, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/data_160V1.xlsx", rowNames = FALSE)
 write.xlsx(data_km_section, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/data_section160V1.xlsx", rowNames = FALSE)

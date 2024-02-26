@@ -323,7 +323,6 @@ data_km_section_score_glycemie <- data_km_section_score_denivele %>% left_join(m
 
 # ----------------------------------------------------------------------------- #
 # Écrire le dataframe dans le fichier CSV
-write.csv2(data_km_section_score_glycemie, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/data_100V1.csv", row.names = FALSE, fileEncoding = "MacRoman")
 write.xlsx(data_km_section_score_glycemie, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/data_100V1.xlsx", rowNames = FALSE)
 write.xlsx(data_km_section, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/data_section100V1.xlsx", rowNames = FALSE)
 

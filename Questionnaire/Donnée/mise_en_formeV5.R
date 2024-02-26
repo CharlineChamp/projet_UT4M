@@ -7,7 +7,6 @@ library(magrittr)
 library(openxlsx)
 library(stringr)
 
-#df <- read_excel("Reponse_questionnaire_V0.xlsx")
 vecteur_guess <- rep("guess", times = 143)
 types_colonnes <- c("date", "date",vecteur_guess)
 df <- read_excel("dataset_V0.xlsx", col_types = types_colonnes)
@@ -512,10 +511,10 @@ data %<>%
 # ----------------------------------------------------------------------------- #
 # Ajout des résultats 
 
-data_resultats <- read_excel("Résultats_courses_UT4M_participants_questionnaires.xlsx", sheet = "Resultats")
-data_abandons <- read_excel("Résultats_courses_UT4M_participants_questionnaires.xlsx", sheet = "Abandons")
-data_non_inscrits <- read_excel("Résultats_courses_UT4M_participants_questionnaires.xlsx", sheet = "non inscrits")
-data_nb_partants <- read_excel("nombre_de_partants.xlsx")
+data_resultats <- read_excel("Bibliographie/Résultats_courses_UT4M_participants_questionnaires.xlsx", sheet = "Resultats")
+data_abandons <- read_excel("Bibliographie/Résultats_courses_UT4M_participants_questionnaires.xlsx", sheet = "Abandons")
+data_non_inscrits <- read_excel("Bibliographie/Résultats_courses_UT4M_participants_questionnaires.xlsx", sheet = "non inscrits")
+data_nb_partants <- read_excel("Bibliographie/nombre_de_partants.xlsx")
 # Mise en forme du jeu de données d'abandons
 data_abandons$do_not_finish = "oui"
 data_abandons$do_not_finish = ifelse(data_abandons$`Liste des abandons.Point` == 'DNS', "DNS","oui")

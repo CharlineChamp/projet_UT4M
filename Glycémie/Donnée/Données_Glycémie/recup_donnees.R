@@ -60,9 +60,7 @@ df_final %<>%
   mutate(numero_participant = as.numeric(gsub("\\D", "", participant))) %>%
   select(glucose,datetime,numero_participant, course)
 
-
-# Écrivez le dataframe dans le fichier Excel
+# Écrivez le dataframe dans le fichier csv
 write.csv2(df_final, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/Données_Glycémie/data_glucoseV2.csv", row.names = FALSE)
-write.xlsx(df_final, "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/Données_Glycémie/data_glucoseV2.xlsx", rowNames = FALSE)
 
 
