@@ -1,0 +1,882 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+
+# Chargement des libraires
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(glmnet)
+library(readxl)
+```
+
+\newpage
+\tableofcontents
+\newpage
+ 
+# Mise en forme des données
+
+```{r}
+# Chargement des données 
+# data <- read_excel("../../Data/dataset_V6_prediction.xlsx")
+# 
+# data=data%>%select(!do_not_finish)
+# summary(data)
+```
+
+
+```{r}
+# Chargement des données 
+data <- read_excel("../../Data/dataset_V6.xlsx")
+
+# Réduction des données aux colonnes d'intérêt
+data_analyse <- data[,c(2:6,8,9,12:17,19:26,37,40:42,44:66)]
+
+# Recodage de la variable do_not_finish
+data_analyse$do_not_finish<-ifelse(data_analyse$do_not_finish=="oui",0,1)
+data_analyse$do_not_finish<-as.factor(data_analyse$do_not_finish)
+
+# Mise en forme des données
+data_analyse <- data_analyse %>% mutate_if(is.character, as.factor)
+
+# Variable sex
+data_analyse$sexH<-ifelse(data_analyse$sex=="Homme",0,1)
+data_analyse$sexH<-as.factor(data_analyse$sexH)
+
+# Variable weekly_volume_profession
+data_analyse$weekly_volume_profession35<-ifelse(data_analyse$weekly_volume_profession=="⩽ 35 heures / semaine",1,0)
+data_analyse$weekly_volume_profession35<-as.factor(data_analyse$weekly_volume_profession35)
+data_analyse$weekly_volume_profession45<-ifelse(data_analyse$weekly_volume_profession=="⩾ 45h / semaine",1,0)
+data_analyse$weekly_volume_profession45<-as.factor(data_analyse$weekly_volume_profession45)
+
+# Variable start_trail
+data_analyse$start_trail2<-ifelse(data_analyse$start_trail=="< 2 ans",1,0)
+data_analyse$start_trail2<-as.factor(data_analyse$start_trail2)
+data_analyse$start_trail25<-ifelse(data_analyse$start_trail=="Entre 2 et 5 ans",1,0)
+data_analyse$start_trail25<-as.factor(data_analyse$start_trail25)
+data_analyse$start_trail510<-ifelse(data_analyse$start_trail=="Entre 5 et 10 ans",1,0)
+data_analyse$start_trail510<-as.factor(data_analyse$start_trail510)
+
+# Variable time_proportion_other_practice
+data_analyse$time_proportion_other_practice20<-ifelse(data_analyse$time_proportion_other_practice=="< 20%",1,0)
+data_analyse$time_proportion_other_practice20<-as.factor(data_analyse$time_proportion_other_practice20)
+data_analyse$time_proportion_other_practice50<-ifelse(data_analyse$time_proportion_other_practice=="> 50%",1,0)
+data_analyse$time_proportion_other_practice50<-as.factor(data_analyse$time_proportion_other_practice50)
+
+# Variable coach_for_trail
+data_analyse$coach_for_trailOui<-ifelse(data_analyse$coach_for_trail=="Non",0,1)
+data_analyse$coach_for_trailOui<-as.factor(data_analyse$coach_for_trailOui)
+
+# Variable heart_rate_monitor_train
+data_analyse$heart_rate_monitor_trainOui<-ifelse(data_analyse$heart_rate_monitor_train=="Non",0,1)
+data_analyse$heart_rate_monitor_trainOui<-as.factor(data_analyse$heart_rate_monitor_trainOui)
+
+# Variable heart_rate_monitor_competition
+data_analyse$heart_rate_monitor_competitionOui<-ifelse(data_analyse$heart_rate_monitor_competition=="Non",0,1)
+data_analyse$heart_rate_monitor_competitionOui<-as.factor(data_analyse$heart_rate_monitor_competitionOui)
+
+# Variable connected_platform
+data_analyse$connected_platformOui<-ifelse(data_analyse$connected_platform=="Non",0,1)
+data_analyse$connected_platformOui<-as.factor(data_analyse$connected_platformOui)
+
+# Variable ITRA_rating_know
+data_analyse$ITRA_rating_knowOui<-ifelse(data_analyse$ITRA_rating_know=="Non",0,1)
+data_analyse$ITRA_rating_knowOui<-as.factor(data_analyse$ITRA_rating_knowOui)
+
+# Variable number_hours_practice_trail_phase_preparation
+data_analyse$number_hours_practice_trail_phase_preparation3<-ifelse(data_analyse$number_hours_practice_trail_phase_preparation=="⩽ 3 heures / semaine",1,0)
+data_analyse$number_hours_practice_trail_phase_preparation3<-as.factor(data_analyse$number_hours_practice_trail_phase_preparation3)
+data_analyse$number_hours_practice_trail_phase_preparation37<-ifelse(data_analyse$number_hours_practice_trail_phase_preparation=="Entre 3h et 7h / semaine",1,0)
+data_analyse$number_hours_practice_trail_phase_preparation37<-as.factor(data_analyse$number_hours_practice_trail_phase_preparation37)
+data_analyse$number_hours_practice_trail_phase_preparation712<-ifelse(data_analyse$number_hours_practice_trail_phase_preparation=="Entre 7h et 12h / semaine",1,0)
+data_analyse$number_hours_practice_trail_phase_preparation712<-as.factor(data_analyse$number_hours_practice_trail_phase_preparation712)
+
+# Variable trail_participation_last_two_seasons
+data_analyse$trail_participation_last_two_seasonsOui<-ifelse(data_analyse$trail_participation_last_two_seasons=="Non",0,1)
+data_analyse$trail_participation_last_two_seasonsOui<-as.factor(data_analyse$trail_participation_last_two_seasonsOui)
+
+# Variable trail_injury_illness
+data_analyse$trail_injury_illnessOui<-ifelse(data_analyse$trail_injury_illness=="Non",0,1)
+data_analyse$trail_injury_illnessOui<-as.factor(data_analyse$trail_injury_illnessOui)
+
+# Variable drop_practice_trail_phase_preparation
+data_analyse$drop_practice_trail_phase_preparation1000<-ifelse(data_analyse$drop_practice_trail_phase_preparation=="< 1000m / semaine",1,0)
+data_analyse$drop_practice_trail_phase_preparation1000<-as.factor(data_analyse$drop_practice_trail_phase_preparation1000)
+data_analyse$drop_practice_trail_phase_preparation2000<-ifelse(data_analyse$drop_practice_trail_phase_preparation=="> 2000m / semaine",1,0)
+data_analyse$drop_practice_trail_phase_preparation2000<-as.factor(data_analyse$drop_practice_trail_phase_preparation2000)
+
+# Variable kilometres_practice_trail_phase_preparation
+data_analyse$kilometres_practice_trail_phase_preparation20<-ifelse(data_analyse$kilometres_practice_trail_phase_preparation=="< 20km / semaine",1,0)
+data_analyse$kilometres_practice_trail_phase_preparation20<-as.factor(data_analyse$kilometres_practice_trail_phase_preparation20)
+data_analyse$kilometres_practice_trail_phase_preparation2050<-ifelse(data_analyse$kilometres_practice_trail_phase_preparation=="Entre 20km et 50km / semaine",1,0)
+data_analyse$kilometres_practice_trail_phase_preparation2050<-as.factor(data_analyse$kilometres_practice_trail_phase_preparation2050)
+data_analyse$kilometres_practice_trail_phase_preparation5080<-ifelse(data_analyse$kilometres_practice_trail_phase_preparation=="Entre 50km et 80km / semaine",1,0)
+data_analyse$kilometres_practice_trail_phase_preparation5080<-as.factor(data_analyse$kilometres_practice_trail_phase_preparation5080)
+
+# Variable number_hours_training_trail_phase_preparation
+data_analyse$number_hours_training_trail_phase_preparation3<-ifelse(data_analyse$number_hours_training_trail_phase_preparation=="⩽ 3 heures / semaine",1,0)
+data_analyse$number_hours_training_trail_phase_preparation3<-as.factor(data_analyse$number_hours_training_trail_phase_preparation3)
+data_analyse$number_hours_training_trail_phase_preparation37<-ifelse(data_analyse$number_hours_training_trail_phase_preparation=="Entre 3h et 7h / semaine",1,0)
+data_analyse$number_hours_training_trail_phase_preparation37<-as.factor(data_analyse$number_hours_training_trail_phase_preparation37)
+data_analyse$number_hours_training_trail_phase_preparation712<-ifelse(data_analyse$number_hours_training_trail_phase_preparation=="Entre 7h et 12h / semaine",1,0)
+data_analyse$number_hours_training_trail_phase_preparation712<-as.factor(data_analyse$number_hours_training_trail_phase_preparation712)
+
+# Variable distance_trail_participation_last_two_seasons
+data_analyse$distance_trail_participation_last_two_seasons0<-ifelse(data_analyse$distance_trail_participation_last_two_seasons=="0 km",1,0)
+data_analyse$distance_trail_participation_last_two_seasons0<-as.factor(data_analyse$distance_trail_participation_last_two_seasons0)
+data_analyse$distance_trail_participation_last_two_seasons40<-ifelse(data_analyse$distance_trail_participation_last_two_seasons=="< 40km",1,0)
+data_analyse$distance_trail_participation_last_two_seasons40<-as.factor(data_analyse$distance_trail_participation_last_two_seasons40)
+data_analyse$distance_trail_participation_last_two_seasons4080<-ifelse(data_analyse$distance_trail_participation_last_two_seasons=="De 40km à 80km",1,0)
+data_analyse$distance_trail_participation_last_two_seasons4080<-as.factor(data_analyse$distance_trail_participation_last_two_seasons4080)
+
+# Variable frequence_trail_participation_last_two_seasons_by_season
+data_analyse$frequence_trail_participation_last_two_seasons_by_season0<-ifelse(data_analyse$frequence_trail_participation_last_two_seasons_by_season=="0 course",1,0)
+data_analyse$frequence_trail_participation_last_two_seasons_by_season0<-as.factor(data_analyse$frequence_trail_participation_last_two_seasons_by_season0)
+data_analyse$frequence_trail_participation_last_two_seasons_by_season13<-ifelse(data_analyse$frequence_trail_participation_last_two_seasons_by_season=="1 à 3 courses / saison",1,0)
+data_analyse$frequence_trail_participation_last_two_seasons_by_season13<-as.factor(data_analyse$frequence_trail_participation_last_two_seasons_by_season13)
+data_analyse$frequence_trail_participation_last_two_seasons_by_season48<-ifelse(data_analyse$frequence_trail_participation_last_two_seasons_by_season=="4 à 8 courses / saison",1,0)
+data_analyse$frequence_trail_participation_last_two_seasons_by_season48<-as.factor(data_analyse$frequence_trail_participation_last_two_seasons_by_season48)
+
+# Variable frequence_medical_apointment_trail
+data_analyse$frequence_medical_apointment_trail2<-ifelse(data_analyse$frequence_medical_apointment_trail=="< 2x / an",1,0)
+data_analyse$frequence_medical_apointment_trail2<-as.factor(data_analyse$frequence_medical_apointment_trail2)
+data_analyse$frequence_medical_apointment_trail6<-ifelse(data_analyse$frequence_medical_apointment_trail=="> 6x / an",1,0)
+data_analyse$frequence_medical_apointment_trail6<-as.factor(data_analyse$frequence_medical_apointment_trail6)
+
+# Variable which_races_UT4M_2023
+data_analyse$which_races_UT4M_2023_20km<-ifelse(data_analyse$which_races_UT4M_2023=="Un des 20km",1,0)
+data_analyse$which_races_UT4M_2023_20km<-as.factor(data_analyse$which_races_UT4M_2023_20km)
+data_analyse$which_races_UT4M_2023_40km<-ifelse(data_analyse$which_races_UT4M_2023=="Un des 40km",1,0)
+data_analyse$which_races_UT4M_2023_40km<-as.factor(data_analyse$which_races_UT4M_2023_40km)
+data_analyse$which_races_UT4M_2023_80km<-ifelse(data_analyse$which_races_UT4M_2023=="80km Challenge",1,0)
+data_analyse$which_races_UT4M_2023_80km<-as.factor(data_analyse$which_races_UT4M_2023_80km)
+data_analyse$which_races_UT4M_2023_100km<-ifelse(data_analyse$which_races_UT4M_2023=="100km Master",1,0)
+data_analyse$which_races_UT4M_2023_100km<-as.factor(data_analyse$which_races_UT4M_2023_100km)
+
+# Variable trail_health_problem_involve_no_training
+data_analyse$trail_health_problem_involve_no_trainingOui<-ifelse(data_analyse$trail_health_problem_involve_no_training=="Non",0,1)
+data_analyse$trail_health_problem_involve_no_trainingOui<-as.factor(data_analyse$trail_health_problem_involve_no_trainingOui)
+
+# Variable time_trail_healt_problem_involve_no_training
+data_analyse$time_trail_health_problem_involve_no_training0<-ifelse(data_analyse$time_trail_health_problem_involve_no_training=="0 semaine",1,0)
+data_analyse$time_trail_health_problem_involve_no_training0<-as.factor(data_analyse$time_trail_health_problem_involve_no_training0)
+data_analyse$time_trail_health_problem_involve_no_training2<-ifelse(data_analyse$time_trail_health_problem_involve_no_training=="< 2 semaines",1,0)
+data_analyse$time_trail_health_problem_involve_no_training2<-as.factor(data_analyse$time_trail_health_problem_involve_no_training2)
+data_analyse$time_trail_health_problem_involve_no_training24<-ifelse(data_analyse$time_trail_health_problem_involve_no_training=="2 à 4 semaines",1,0)
+data_analyse$time_trail_health_problem_involve_no_training24<-as.factor(data_analyse$time_trail_health_problem_involve_no_training24)
+data_analyse$time_trail_health_problem_involve_no_training58<-ifelse(data_analyse$time_trail_health_problem_involve_no_training=="5 à 8 semaines",1,0)
+data_analyse$time_trail_health_problem_involve_no_training58<-as.factor(data_analyse$time_trail_health_problem_involve_no_training58)
+
+# Variable have_this_illness
+data_analyse$have_this_illnessNon<-ifelse(data_analyse$have_this_illness=="Non",1,0)
+data_analyse$have_this_illnessNon<-as.factor(data_analyse$have_this_illnessNon)
+data_analyse$have_this_illnessAsthme<-ifelse(data_analyse$have_this_illness=="Asthme",1,0)
+data_analyse$have_this_illnessAsthme<-as.factor(data_analyse$have_this_illnessAsthme)
+data_analyse$have_this_illnessMC<-ifelse(data_analyse$have_this_illness=="Autre maladie cardiaque",1,0)
+data_analyse$have_this_illnessMC<-as.factor(data_analyse$have_this_illnessMC)
+data_analyse$have_this_illnessHA<-ifelse(data_analyse$have_this_illness=="Hypertension artérielle",1,0)
+data_analyse$have_this_illnessHA<-as.factor(data_analyse$have_this_illnessHA)
+data_analyse$have_this_illnessMP<-ifelse(data_analyse$have_this_illness=="Autre maladie pulmonaire",1,0)
+data_analyse$have_this_illnessMP<-as.factor(data_analyse$have_this_illnessMP)
+data_analyse$have_this_illnessAsthmeMP<-ifelse(data_analyse$have_this_illness=="Asthme,Autre maladie pulmonaire",1,0)
+data_analyse$have_this_illnessAsthmeMP<-as.factor(data_analyse$have_this_illnessAsthmeMP)
+
+# Variable smoke
+data_analyse$smokeOui<-ifelse(data_analyse$smoke=="Non",0,1)
+data_analyse$smokeOui<-as.factor(data_analyse$smokeOui)
+
+# Réduction des données aux colonnes d'intérêt
+data_analyse <- data_analyse[,c(2:5,28:98)]
+```
+
+```{r}
+names(data_analyse)
+```
+
+
+```{r}
+data_analyse<-data_analyse%>%select(!c(general_internal_speech,confidence,consistency,control,somatic_anxiety,cognitive_anxiety,distance_trail_participation_last_two_seasons0,distance_trail_participation_last_two_seasons40,distance_trail_participation_last_two_seasons4080,frequence_trail_participation_last_two_seasons_by_season0,frequence_trail_participation_last_two_seasons_by_season13,frequence_trail_participation_last_two_seasons_by_season48,time_trail_health_problem_involve_no_training0,time_trail_health_problem_involve_no_training2,time_trail_health_problem_involve_no_training24,time_trail_health_problem_involve_no_training58))
+
+```
+
+
+# Prédiction en retirant les NAs
+
+```{r}
+# Retrait des lignes contenant des NA
+data_sans_NA <- data_analyse%>%drop_na()
+summary(data_sans_NA)
+```
+
+## Différents modèles univariés
+
+### Sex
+
+```{r}
+# names(data_sans_NA)
+# str(data_sans_NA)
+fit_sex <- glm(as.factor(trail_injury_illnessOui)~sexH,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_sex)
+```
+
+### Age
+```{r}
+fit_age <- glm(as.factor(trail_injury_illnessOui)~age, family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_age)
+```
+
+### Weight
+```{r}
+fit_weight <- glm(as.factor(trail_injury_illnessOui)~weight,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_weight)
+```
+
+### Max Weight
+```{r}
+fit_max_weight <- glm(as.factor(trail_injury_illnessOui)~max_weight,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_max_weight)
+```
+
+### Min Weight
+```{r}
+fit_min_weight <- glm(as.factor(trail_injury_illnessOui)~min_weight,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_min_weight)
+```
+
+### Fulfillment
+```{r}
+fit_fulfillment <- glm(as.factor(trail_injury_illnessOui)~fulfillment,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_fulfillment)
+```
+
+### Priority
+```{r}
+fit_priority <- glm(as.factor(trail_injury_illnessOui)~priority,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_priority)
+```
+
+### Intrinsic motivation
+```{r}
+fit_intrinsic_motivation <- glm(as.factor(trail_injury_illnessOui)~intrinsic_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_intrinsic_motivation)
+```
+
+### Identified motivation
+```{r}
+fit_identified_motivation <- glm(as.factor(trail_injury_illnessOui)~identified_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_identified_motivation)
+```
+
+### Integrated motivation
+```{r}
+fit_integrated_motivation <- glm(as.factor(trail_injury_illnessOui)~integrated_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_integrated_motivation)
+```
+
+### Introjected motivation
+```{r}
+fit_introjected_motivation <- glm(as.factor(trail_injury_illnessOui)~introjected_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_introjected_motivation)
+```
+
+### External motivation
+```{r}
+fit_external_motivation <- glm(as.factor(trail_injury_illnessOui)~external_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_external_motivation)
+```
+
+### Global mental force
+```{r}
+fit_global_mental_force <- glm(as.factor(trail_injury_illnessOui)~global_mental_force,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_global_mental_force)
+```
+
+### Confidence
+```{r}
+# fit_confidence <- glm(as.factor(trail_injury_illnessOui)~confidence,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_confidence)
+```
+
+### Consistency
+```{r}
+# fit_consistency <- glm(as.factor(trail_injury_illnessOui)~consistency,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_consistency)
+```
+
+### Control
+```{r}
+# fit_control <- glm(as.factor(trail_injury_illnessOui)~control,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_control)
+```
+
+### General internal speech
+```{r}
+# fit_general_internal_speech <- glm(as.factor(trail_injury_illnessOui)~general_internal_speech,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_general_internal_speech)
+```
+
+### Training internal speech
+```{r}
+fit_training_internal_speech <- glm(as.factor(trail_injury_illnessOui)~training_internal_speech,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_training_internal_speech)
+```
+
+### Competition internal speech
+```{r}
+fit_competition_internal_speech <- glm(as.factor(trail_injury_illnessOui)~competition_internal_speech,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_competition_internal_speech)
+```
+
+### General precompetitive anxiety
+```{r}
+# fit_general_internal_speech <- glm(as.factor(trail_injury_illnessOui)~general_internal_speech,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_general_internal_speech)
+```
+
+### Somatic anxiety
+```{r}
+# fit_somatic_anxiety <- glm(as.factor(trail_injury_illnessOui)~somatic_anxiety ,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_somatic_anxiety )
+```
+
+### Cognitive anxiety
+```{r}
+# fit_cognitive_anxiety  <- glm(as.factor(trail_injury_illnessOui)~cognitive_anxiety,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_cognitive_anxiety)
+```
+
+### Harmonious hobbies
+```{r}
+fit_harmonious_hobbies <- glm(as.factor(trail_injury_illnessOui)~harmonious_hobbies,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_harmonious_hobbies)
+```
+
+### Obsessive hobbies
+```{r}
+fit_obsessive_hobbies <- glm(as.factor(trail_injury_illnessOui)~obsessive_hobbies,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_obsessive_hobbies)
+```
+
+### Addiction
+```{r}
+fit_addiction <- glm(as.factor(trail_injury_illnessOui)~addiction,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_addiction)
+```
+
+### Weekly volume profession 
+```{r}
+fit_weekly_volume_profession <- glm(as.factor(trail_injury_illnessOui)~weekly_volume_profession35 +weekly_volume_profession45, family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_weekly_volume_profession)
+```
+
+### Start trail 
+```{r}
+fit_start_trail <- glm(as.factor(trail_injury_illnessOui)~start_trail2 +start_trail25 + start_trail510,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_start_trail)
+```
+
+### Time proportion other practice
+```{r}
+fit_time_proportion_other_practice <- glm(as.factor(trail_injury_illnessOui)~time_proportion_other_practice20 +time_proportion_other_practice50,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_time_proportion_other_practice)
+```
+
+### Coach for trail
+```{r}
+fit_coach_for_trailOui <- glm(as.factor(trail_injury_illnessOui)~coach_for_trailOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_coach_for_trailOui)
+```
+
+### Heart rate monitor train
+```{r}
+fit_heart_rate_monitor_trainOui <- glm(as.factor(trail_injury_illnessOui)~heart_rate_monitor_trainOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_heart_rate_monitor_trainOui)
+```
+
+### Heart rate monitor competition
+```{r}
+fit_heart_rate_monitor_competitionOui <- glm(as.factor(trail_injury_illnessOui)~heart_rate_monitor_competitionOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_heart_rate_monitor_competitionOui)
+```
+
+### Connected platform
+```{r}
+fit_connected_platformOui <- glm(as.factor(trail_injury_illnessOui)~connected_platformOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_connected_platformOui)
+```
+
+### ITRA rating know
+```{r}
+fit_ITRA_rating_knowOui <- glm(as.factor(trail_injury_illnessOui)~ITRA_rating_knowOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_ITRA_rating_knowOui)
+```
+
+### Number hours practice trail phase preparation
+```{r}
+fit_number_hours_practice_trail_phase_preparation <- glm(as.factor(trail_injury_illnessOui)~number_hours_practice_trail_phase_preparation3 +number_hours_practice_trail_phase_preparation37 + number_hours_practice_trail_phase_preparation712,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_number_hours_practice_trail_phase_preparation)
+```
+
+### Trail participation last two seasons
+```{r}
+fit_trail_participation_last_two_seasonsOui <- glm(as.factor(trail_injury_illnessOui)~trail_participation_last_two_seasonsOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_trail_participation_last_two_seasonsOui)
+```
+
+### Drop practice trail phase preparation
+```{r}
+fit_drop_practice_trail_phase_preparation <- glm(as.factor(trail_injury_illnessOui)~drop_practice_trail_phase_preparation1000+drop_practice_trail_phase_preparation2000,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_drop_practice_trail_phase_preparation)
+```
+
+### Kilometres practice trail phase preparation
+```{r}
+fit_kilometres_practice_trail_phase_preparation <- glm(as.factor(trail_injury_illnessOui)~kilometres_practice_trail_phase_preparation20 + kilometres_practice_trail_phase_preparation2050 + kilometres_practice_trail_phase_preparation5080,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_kilometres_practice_trail_phase_preparation)
+```
+
+### Number hours training trail phase preparation
+```{r}
+fit_number_hours_training_trail_phase_preparation <- glm(as.factor(trail_injury_illnessOui)~number_hours_training_trail_phase_preparation3 + number_hours_training_trail_phase_preparation37 + number_hours_training_trail_phase_preparation712,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_number_hours_training_trail_phase_preparation)
+```
+
+### Distance trail participation last two seasons
+```{r}
+# fit_distance_trail_participation_last_two_seasons <- glm(as.factor(trail_injury_illnessOui)~distance_trail_participation_last_two_seasons0 + distance_trail_participation_last_two_seasons40 + distance_trail_participation_last_two_seasons4080,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_distance_trail_participation_last_two_seasons)
+```
+
+### Frequence trail participation last two seasons by season
+```{r}
+# fit_frequence_trail_participation_last_two_seasons_by_season <- glm(as.factor(trail_injury_illnessOui)~frequence_trail_participation_last_two_seasons_by_season0 + frequence_trail_participation_last_two_seasons_by_season13 + frequence_trail_participation_last_two_seasons_by_season48,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_frequence_trail_participation_last_two_seasons_by_season)
+```
+
+### Frequence medical apointment trail
+```{r}
+fit_frequence_medical_apointment_trail <- glm(as.factor(trail_injury_illnessOui)~frequence_medical_apointment_trail2 + frequence_medical_apointment_trail6,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_frequence_medical_apointment_trail)
+```
+
+### Which races UT4M 2023
+```{r}
+fit_which_races_UT4M_2023 <- glm(as.factor(trail_injury_illnessOui)~which_races_UT4M_2023_20km + which_races_UT4M_2023_40km + which_races_UT4M_2023_80km + which_races_UT4M_2023_100km,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_which_races_UT4M_2023)
+```
+
+### Trail health problem involve no training
+```{r}
+fit_trail_health_problem_involve_no_training <- glm(as.factor(trail_injury_illnessOui)~trail_health_problem_involve_no_trainingOui, family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_trail_health_problem_involve_no_training)
+```
+
+### Time trail health problem involve no training
+```{r}
+# fit_time_trail_health_problem_involve_no_training <- glm(as.factor(trail_injury_illnessOui)~time_trail_health_problem_involve_no_training0 + time_trail_health_problem_involve_no_training2 + time_trail_health_problem_involve_no_training24 + time_trail_health_problem_involve_no_training58,family=binomial(link="logit"), data = data_sans_NA)
+# summary(fit_time_trail_health_problem_involve_no_training)
+```
+
+### Have this illness
+```{r}
+fit_have_this_illness <- glm(as.factor(trail_injury_illnessOui)~have_this_illnessAsthmeMP + have_this_illnessMP + have_this_illnessHA + have_this_illnessMC + have_this_illnessAsthme + have_this_illnessNon,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_have_this_illness)
+```
+
+### Smoke
+```{r}
+fit_smoke <- glm(as.factor(trail_injury_illnessOui)~smokeOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_smoke)
+```
+Significatives : Addiction, coach_for_trail, start_trail25
+
+
+```{r}
+# Création des jeux de données d'apprentissage et de test
+
+# data_sans_NA=data_sans_NA%>%select(!do_not_finish)
+taille_ech <- floor(0.8 * nrow(data_sans_NA))
+
+train_ind <- sample(seq_len(nrow(data_sans_NA)), size = taille_ech)
+
+train <-data_sans_NA[train_ind,]
+test <- data_sans_NA[-train_ind,]
+```
+
+## Modèle complet
+
+```{r}
+# Modèle complet
+# str(data_sans_NA)
+names(train)
+summary(train)
+fit <- glm(trail_injury_illnessOui~.,family=binomial(link="logit"), data = train)
+summary(fit)
+
+pred <- predict(fit, newx = test[,-25], type = "response")
+
+# Seuil de classification
+seuil <- 0.5
+
+# Classer les prédictions en utilisant le seuil
+predictions_binaires <- ifelse(pred > seuil, 1, 0)
+```
+
+```{r}
+# Matrice de confusion
+matrice_confusion <- table(predictions_binaires, as.factor(test$trail_injury_illnessOui))
+matrice_confusion
+
+# Collecte des données de la matrice de confusion
+TP <- matrice_confusion[1, 1]
+TN <- matrice_confusion[2, 2]  
+FP <- matrice_confusion[1, 2]  
+FN <- matrice_confusion[2, 1]  
+```
+
+
+## Modèle avec les variables significatives
+
+
+
+```{r}
+fit <- glm(as.factor(trail_injury_illnessOui)~weekly_volume_profession45+harmonious_hobbies+obsessive_hobbies+min_weight+ weight+ITRA_rating_knowOui+frequence_medical_apointment_trail2+drop_practice_trail_phase_preparation2000,family=binomial(link="logit"), data = train)
+summary(fit)
+```
+
+## Pénalisation Lasso
+
+```{r}
+# names(train)
+# Modélisation lasso
+
+names(train)
+fit_lasso <-cv.glmnet(as.matrix(train[,-43]),  as.matrix(train[,43]), family = "binomial", alpha = 1)
+pred_lasso <- predict(fit_lasso, newx = as.matrix(test[,-43]), s=fit_lasso$lambda.min)
+
+# Prédiction lasso
+pred_lasso <- ifelse(pred_lasso > 0.5, 1, 0)
+```
+
+```{r}
+# Matrice de confusion
+matrice_confusion_lasso <- table(pred_lasso, as.matrix(test[,42]))
+matrice_confusion_lasso
+
+# Collecte des données de la matrice de confusion
+TP <- matrice_confusion_lasso[1, 1]
+TN <- matrice_confusion_lasso[2, 2]  
+FP <- matrice_confusion_lasso[1, 2]  
+FN <- matrice_confusion_lasso[2, 1]  
+```
+
+```{r}
+# Fixation des paramètres
+m <- 100
+res<-matrix(nrow=69,ncol = m,NA)
+
+# Stabilité du lasso
+for (i in c(1:m)) {
+  taille_ech <- floor(0.8 * nrow(data_sans_NA))
+  train_ind <- sample(seq_len(nrow(data_sans_NA)), size = taille_ech)
+  x_train <-data_sans_NA[train_ind,-43]
+  x_train <-x_train[,-c(68:73)]
+  y_train <- data_sans_NA[train_ind,43]
+  y_train <- y_train$trail_injury_illnessOui
+  x_test <- data_sans_NA[-train_ind,-43]
+  x_test <-x_test[,-c(68:73)]
+  y_test <- data_sans_NA[-train_ind,43]
+  y_test <- y_test$trail_injury_illnessOui
+  fit_lasso <- cv.glmnet(as.matrix(x_train), y_train, family = "binomial", alpha = 1)
+  pred_lasso <- predict(fit_lasso, newx = as.matrix(x_test), s = fit_lasso$lambda.min)
+res[,i]<-(coef(fit_lasso)[,1]!=0)
+}
+
+
+
+nbfoisselect<-apply(res,1,sum)
+etiquettevar<-c("intercept",c(1:68))
+nom <-data_sans_NA[,-43]
+nom <-nom[,-c(68:73)]
+variable<-c("intercept",names(nom))
+data <- data.frame(
+  name=etiquettevar,
+  var = variable,
+  val=nbfoisselect
+)
+
+# Représentation graphique de la stabilité
+ggplot(data=data, aes(x=etiquettevar, y=nbfoisselect)) +
+  geom_bar(stat="identity", position=position_dodge(),fill="steelblue")+
+  geom_text(aes(label=nbfoisselect), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+ylab("Nombre sélectionné")+
+  xlab("Variable")+theme_minimal()+theme(axis.text.x = element_text(size = 12,
+                                                                   angle = 45))
+
+# Représentation numérique de la stabilité
+data[,-1] %>%  arrange(desc(nbfoisselect))
+```
+
+```{r}
+accuracy <- (TP + TN)/(TP+TN+FP+FN)
+cat("L'accuracy mesure le nombre total de prédictions correctes par rapport au nombre total d'observations. L'accuracy est égale à : \n", round(accuracy, 4))
+specificity <- TP /(TP+FN)
+cat("\n La sensibilité mesure la capacité du modèle à détecter les vrais positifs. La spécificité est égale à : \n", round(specificity, 4))
+sensibility <- TN / (TN + FP)
+cat("\n La spécificité mesure la capacité du modèle à détecter les vrais négatifs. La sensibilité est égale à : \n", round(sensibility, 4))
+```
+
+## Pénalisation Ridge
+
+```{r}
+# Modélisation ridge
+fit_ridge <-cv.glmnet(as.matrix(train[,-43]),  as.matrix(train[,43]), family = "binomial", alpha = 0)
+pred_ridge <- predict(fit_ridge, newx = as.matrix(test[,-43]), s=fit_lasso$lambda.min)
+
+# Prédiction ridge
+pred_ridge <- ifelse(pred_ridge > 0.5, 1, 0)
+```
+
+```{r}
+# Matrice de confusion
+matrice_confusion_ridge <- table(pred_ridge, as.matrix(test[,43]))
+matrice_confusion_ridge
+
+# Collecte des données de la matrice de confusion
+TP <- matrice_confusion_ridge[1, 1]
+TN <- matrice_confusion_ridge[2, 2]  
+FP <- matrice_confusion_ridge[1, 2]  
+FN <- matrice_confusion_ridge[2, 1]  
+```
+
+```{r}
+accuracy <- (TP + TN)/(TP+TN+FP+FN)
+cat("L'accuracy mesure le nombre total de prédictions correctes par rapport au nombre total d'observations. L'accuracy est égale à : \n", round(accuracy, 4))
+specificity <- TP /(TP+FN)
+cat("\n La sensibilité mesure la capacité du modèle à détecter les vrais positifs. La spécificité est égale à : \n", round(specificity, 4))
+sensibility <- TN / (TN + FP)
+cat("\n La spécificité mesure la capacité du modèle à détecter les vrais négatifs. La sensibilité est égale à : \n", round(sensibility, 4))
+```
+```{r}
+# Fixation des paramètres
+m <- 100
+res<-matrix(nrow=69,ncol = m,NA)
+
+# Stabilité du lasso
+for (i in c(1:m)) {
+taille_ech <- floor(0.8 * nrow(data_sans_NA))
+  train_ind <- sample(seq_len(nrow(data_sans_NA)), size = taille_ech)
+  x_train <-data_sans_NA[train_ind,-43]
+  x_train <-x_train[,-c(68:73)]
+  y_train <- data_sans_NA[train_ind,43]
+  y_train <- y_train$trail_injury_illnessOui
+  x_test <- data_sans_NA[-train_ind,-43]
+  x_test <-x_test[,-c(68:73)]
+  y_test <- data_sans_NA[-train_ind,43]
+  y_test <- y_test$trail_injury_illnessOui
+  fit_ridge <- cv.glmnet(as.matrix(x_train), y_train, family = "binomial", alpha = 0)
+  pred_ridge <- predict(fit_ridge, newx = as.matrix(x_test), s = fit_lasso$lambda.min)
+res[,i]<-(coef(fit_ridge)[,1]!=0)
+}
+
+
+
+nbfoisselect<-apply(res,1,sum)
+etiquettevar<-c("intercept",c(1:68))
+nom <-data_sans_NA[,-43]
+nom <-nom[,-c(68:73)]
+variable<-c("intercept",names(nom))
+data <- data.frame(
+  name=etiquettevar,
+  var = variable,
+  val=nbfoisselect
+)
+
+# Représentation graphique de la stabilité
+ggplot(data=data, aes(x=etiquettevar, y=nbfoisselect)) +
+  geom_bar(stat="identity", position=position_dodge(),fill="steelblue")+
+  geom_text(aes(label=nbfoisselect), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+ylab("Nombre sélectionné")+
+  xlab("Variable")+theme_minimal()+theme(axis.text.x = element_text(size = 12,
+                                                                   angle = 45))
+
+# Représentation numérique de la stabilité
+data[,-1] %>%  arrange(nbfoisselect)
+```
+## Pénalisation Elastic Net
+
+
+## Estimateur Scad
+
+
+# Prédiction en imputant les NAs par la moyenne
+
+```{r}
+# Imputation des NA
+data_NA_moyenne <- data_analyse %>%
+  mutate(across(where(is.numeric), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# Imputation des variables catégorielles par la classe majoritaire
+data_NA_moyenne <- data_NA_moyenne %>%
+  mutate(across(where(is.character), ~ifelse(is.na(.), names(which.max(table(.))), .)))
+
+# Recodage de la variable do_not_finish
+data_NA_moyenne$do_not_finish<-ifelse(data_NA_moyenne$do_not_finish=="oui",0,1)
+data_NA_moyenne$do_not_finish <- as.factor(data_NA_moyenne$do_not_finish)
+
+# Mise en forme des données
+data_NA_moyenne <- data_NA_moyenne %>% mutate_if(is.character, as.factor)
+```
+
+```{r}
+# Création des jeux de données d'apprentissage et de test
+taille_ech <- floor(0.8 * nrow(data_NA_moyenne))
+
+train_ind <- sample(seq_len(nrow(data_NA_moyenne)), size = taille_ech)
+
+x_train_moyenne <-makeX(data_NA_moyenne[train_ind,-48])
+y_train_moyenne <- data_NA_moyenne[train_ind,"do_not_finish"]
+y_train_moyenne <- y_train_moyenne$do_not_finish
+x_test_moyenne <- as.data.frame(makeX(data_NA_moyenne[-train_ind,-48]))
+y_test_moyenne <- data_NA_moyenne[-train_ind,"do_not_finish"]
+y_test_moyenne <- y_test_moyenne$do_not_finish
+```
+
+## Modèle complet simple (Ne fonctionne pas)
+```{r}
+# Modèle complet
+fit_moyenne <- glm(y_train_moyenne ~ x_train_moyenne,family=binomial(link="logit"))
+
+#summary(fit_moyenne)
+pred_moyenne <- predict(fit_moyenne, newx = as.matrix(x_test_moyenne), type = "response")
+
+# Seuil de classification
+seuil <- 0.5
+
+# Classer les prédictions en utilisant le seuil
+predictions_binaires <- ifelse(pred_moyenne > seuil, 1, 0)
+table(predictions_binaires)
+table(y_test_moyenne)
+RMSE_ridge <- sqrt(mean((pred_moyenne - y_test_moyenne)^2))
+
+# Résumé du modèle
+summary(fit_moyenne)
+```
+
+## Pénalisation Lasso
+
+```{r}
+# Modélisation lasso
+fit_moyenne_lasso <-cv.glmnet(x_train_moyenne,  as.numeric(y_train_moyenne), family = "binomial", alpha = 1)
+pred_moyenne_lasso <- predict(fit_moyenne_lasso, newx = as.matrix(x_test_moyenne), s=fit_moyenne_lasso$lambda.min)
+
+# Prédiction lasso
+pred_moyenne_lasso <- ifelse(pred_moyenne_lasso > 0.5, 1, 0)
+```
+
+```{r}
+# Matrice de confusion
+matrice_confusion_moyenne_lasso <- table(pred_moyenne_lasso, y_test_moyenne)
+matrice_confusion_moyenne_lasso
+
+# Collecte des données de la matrice de confusion
+TP <- matrice_confusion_moyenne_lasso[1, 1]
+TN <- matrice_confusion_moyenne_lasso[2, 2]  
+FP <- matrice_confusion_moyenne_lasso[1, 2]  
+FN <- matrice_confusion_moyenne_lasso[2, 1]  
+```
+
+```{r}
+# Fixation des paramètres
+m <- 100
+res<-matrix(nrow=99,ncol = m,NA)
+
+# Stabilité du lasso
+for (i in c(1:m)) {
+  taille_ech <- floor(0.8 * nrow(data_NA_moyenne))
+  train_ind <- sample(seq_len(nrow(data_NA_moyenne)), size = taille_ech)
+  x_train_moyenne <-makeX(data_NA_moyenne[train_ind,-48])
+  y_train_moyenne <- data_NA_moyenne[train_ind,"do_not_finish"]
+  y_train_moyenne <- y_train_moyenne$do_not_finish
+  x_test_moyenne <- as.data.frame(makeX(data_NA_moyenne[-train_ind,-48]))
+  y_test_moyenne <- data_NA_moyenne[-train_ind,"do_not_finish"]
+  y_test_moyenne <- y_test_moyenne$do_not_finish
+  fit_lasso <- cv.glmnet(x_train_moyenne, y_train_moyenne, family = "binomial", alpha = 1)
+  pred_lasso <- predict(fit_lasso, newx = as.matrix(x_test_moyenne), s = fit_lasso$lambda.min)
+res[,i]<-(coef(fit_lasso)[,1]!=0)
+}
+
+
+
+nbfoisselect<-apply(res,1,sum)
+etiquettevar<-c("intercept",c(1:98))
+variable<-c("intercept",names(as.data.frame(makeX(data_NA_moyenne[,-48]))))
+data <- data.frame(
+  name=etiquettevar,
+  var = variable,
+  val=nbfoisselect
+)
+
+# Représentation graphique de la stabilité
+ggplot(data=data, aes(x=etiquettevar, y=nbfoisselect)) +
+  geom_bar(stat="identity", position=position_dodge(),fill="steelblue")+
+  geom_text(aes(label=nbfoisselect), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+ylab("Nombre sélectionné")+
+  xlab("Variable")+theme_minimal()+theme(axis.text.x = element_text(size = 12,
+                                                                   angle = 45))
+
+# Représentation numérique de la stabilité
+data[,-1] %>%  arrange(desc(nbfoisselect))
+```
+
+```{r}
+accuracy <- (TP + TN)/(TP+TN+FP+FN)
+cat("L'accuracy mesure le nombre total de prédictions correctes par rapport au nombre total d'observations. L'accuracy est égale à : \n", round(accuracy, 4))
+specificity <- TP /(TP+FN)
+cat("\n La sensibilité mesure la capacité du modèle à détecter les vrais positifs. La spécificité est égale à : \n", round(specificity, 4))
+sensibility <- TN / (TN + FP)
+cat("\n La spécificité mesure la capacité du modèle à détecter les vrais négatifs. La sensibilité est égale à : \n", round(sensibility, 4))
+```
+
+## Pénalisation Ridge
+
+
+## Pénalisation Elastic Net
+
+
+## Estimateur Scad
+
+
+# Prédiction en imputant les NAs par la médiane
+
+```{r}
+# Imputation des NA
+data_NA_mediane <- data_analyse %>%
+  mutate(across(where(is.numeric), ~ifelse(is.na(.), median(., na.rm = TRUE), .)))
+
+# Imputation des variables catégorielles par la classe majoritaire
+data_NA_mediane <- data_NA_mediane %>%
+  mutate(across(where(is.character), ~ifelse(is.na(.), names(which.max(table(.))), .)))
+
+# Recodage de la variable do_not_finish
+data_NA_mediane$do_not_finish<-ifelse(data_NA_mediane$do_not_finish=="oui",0,1)
+
+# Mise en forme des données
+data_NA_mediane <- data_NA_mediane %>% mutate_if(is.character, as.factor)
+```
+
+```{r}
+# Modèle complet
+fit_mediane <- glm(data_NA_mediane$do_not_finish~.,family=binomial(link="logit"), data=data_NA_mediane)
+summary(fit_mediane)
+```

@@ -1,0 +1,643 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = ">", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+library(readxl)
+library(mclust)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(gt)
+library(stats)
+library(magrittr)
+```
+
+\newpage
+\tableofcontents
+
+\newpage
+# Introduction
+
+Dans cette étude, nous explorons les nuances psychologiques des coureurs de trail en utilisant des techniques de clustering pour identifier des groupes homogènes au sein de cette communauté. L'objectif principal est d'analyser les profils distincts émergents au sein de cette population hétérogène, en mettant l'accent sur les caractéristiques individuelles telles que la motivation, l'anxiété, les habitudes de vie et d'autres aspects psychologiques.
+
+À travers une approche méthodologique basée sur le clustering gaussien implémentée avec le package *mclust* en $R$, cette étude cherche à déterminer le nombre optimal de groupes représentatifs des coureurs de trail. Une fois ces groupes identifiés, nous nous pencherons sur les différences significatives entre eux, afin de mieux comprendre les dynamiques psychologiques et comportementales qui sous-tendent la passion commune du trail running.
+
+```{r}
+# Importation des données
+data <- read_excel("~/Documents/GitHub/UT4M_psycho/Data/dataset_V6.xlsx")
+
+# Sélectionne les variables motivations
+data_passion <- data[,c(1,63,64)] 
+
+# Sélectionner uniquement les lignes complètes
+df <- data_passion[complete.cases(data_passion), ]
+```
+
+\newpage
+# Modélisation par clustering (mclust)
+
+Nous avons élaboré divers modèles de mélanges afin d'explorer nos données. Pour simplifier, un modèle de mélange est un outil qui nous guide pour déceler différents groupes ou composants au sein de nos informations, ce qui peut être précieux pour dévoiler des schémas ou des tendances dissimulées. Pour choisir le modèle le plus adapté, nous avons ajusté la variable "G" de 1 à 5, en observant la meilleure valeur du BIC, nous permettant ainsi de sélectionner notre modèle optimal.
+
+```{r, fig.cap="Comparaison des valeurs BIC pour différents modèles"}
+model1 <- Mclust(df[,c(2,3)])
+#summary(model1)
+
+model2 <- Mclust(df[,c(2,3)], G=2)
+#summary(model2)
+
+model3 <- Mclust(df[,c(2,3)], G=3)
+#summary(model3)
+
+model4 <- Mclust(df[,c(2,3)], G=4)
+#summary(model4)
+
+model5 <- Mclust(df[,c(2,3)], G=5)
+#summary(model5)
+
+# Création d'un dataframe pour les valeurs du BIC
+bic_data <- data.frame(
+  Model = c("Modèle G = 1", "Modèle G = 2", "Modèle G = 3", "Modèle G = 4", "Modèle G = 5"),
+  BIC = c(model1$bic, model2$bic, model3$bic, model4$bic, model5$bic)
+)
+
+# Création du ggplot
+ggplot(bic_data, aes(x = Model, y = BIC)) +
+  geom_point(size = 1, color = "darkblue") +
+  geom_text(aes(label = sprintf("%.2f", BIC)), vjust = -0.5, size = 3) +
+  labs(title = "",
+       x = "Modèles",
+       y = "Valeur BIC") +
+  theme_bw() 
+```
+
+Nous avons choisi le modèle de clustering avec deux groupes, car il a la meilleure valeur du BIC (Bayesian Information Criterion). Cela suggère qu'il correspond le mieux à la structure sous-jacente des données des coureurs de trail.
+
+\newpage
+# Attribution des clusters aux données
+
+Voici la sortie générée par R, nous permettant d'examiner notre modèle choisi. Le code suivant a été utilisé pour créer le modèle et afficher ses caractéristiques :
+
+```{r}
+model2 <- Mclust(df[,c(2,3)], G=2)
+summary(model2)
+```
+Ce morceau de code ajuste un modèle de mélange gaussien avec deux groupes (G=2) en utilisant les données spécifiées. Ensuite, la fonction summary() nous fournit un aperçu détaillé des résultats du modèle. Cela inclut des informations telles que les paramètres estimés pour chaque groupe, les proportions de chaque groupe, et d'autres mesures importantes liées à la qualité du modèle. L'analyse de cette sortie nous permet de mieux comprendre la structure de nos données et les caractéristiques de chaque groupe identifié.
+
+Incorporons les classifications des clusters dans notre dataframe initial. Pour ensuite afficher les premières lignes du dataframe ajusté fournissant un aperçu rapide des modifications. 
+
+```{r}
+# Ajouter la colonne des clusters à notre dataframe d'origine
+df$cluster <- model2$classification
+
+# Affichage des premières lignes du dataframe modifié
+gt(head(df))
+```
+ 
+```{r}
+# Tableau récapitulatif du nombre d'observations par cluster
+table(df$cluster)
+```
+
+\newpage
+# Analyse des groupes 
+
+```{r}
+data_complete <- data %>% left_join(df[, c(1,4)], by = join_by(file_number))
+data_sans_NA <- data_complete %>% filter(!is.na(cluster))
+```
+
+## Données basiques
+
+### Sexe
+
+```{r, fig.cap = "Répartition des sexes par groupe"}
+# Créer le graphique avec les valeurs des données
+ggplot(data_complete, aes(x = cluster, fill = sex)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+sex_table <- table(data_complete$cluster, data_complete$sex)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(sex_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+### Age
+
+```{r, fig.cap = "Distribution de l'âge par groupe"}
+ggplot(data_sans_NA, aes(x = as.factor(cluster), y = age)) +
+  geom_boxplot() +
+  labs(title = "") + 
+  theme_bw() + 
+  xlab("Groupes")
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(age ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+```
+
+### Poids
+
+```{r, fig.cap = "Distribution du poids par groupe"}
+ggplot(data_sans_NA, aes(x = as.factor(cluster), y = weight)) +
+  geom_boxplot() +
+  labs(title = "") + 
+  theme_bw() + 
+  xlab("Groupes")
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(weight ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+```
+
+### Coach 
+
+```{r, fig.cap = "Répartition des coureurs ayant des coachs par groupe"}
+ggplot(data_complete, aes(x = cluster, fill = coach_for_trail)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+coach_table <- table(data_complete$cluster, data_complete$coach_for_trail)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(coach_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+### Blessure
+
+```{r, fig.cap = "Répartition des coureurs ayant eu une blessure par groupe"}
+ggplot(data_complete, aes(x = cluster, fill = trail_injury_illness)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+blessure_table <- table(data_complete$cluster, data_complete$trail_injury_illness)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(blessure_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+### Côte ITRA 
+
+```{r, fig.cap="Répartition des côtes ITRA des coureurs par groupe"}
+ggplot(data_sans_NA, aes(x = as.factor(cluster), y = ITRA_rating)) +
+  geom_boxplot() +
+  theme_bw() + 
+  labs(title = "") + 
+  xlab("Groupes")
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(ITRA_rating ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+```
+
+### Courses 
+
+```{r, fig.cap = "Répartition des courses par groupe"}
+ggplot(data_complete, aes(x = cluster, fill = which_races_UT4M_2023)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+course_table <- table(data_complete$cluster, data_complete$which_races_UT4M_2023)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(course_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+```{r, fig.cap = "Répartition des courses regroupées"}
+data_complete %<>% mutate(race2 = ifelse(which_races_UT4M_2023 == "Un des 40km" | which_races_UT4M_2023 == "Un des 20km","<= 40km",">= 40km"))
+ggplot(data_complete, aes(x = cluster, fill = race2)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+course2_table <- table(data_complete$cluster, data_complete$race2)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(course2_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+### Temps d'expérience en trail 
+
+```{r, fig.cap = "Répartition du temps d'expérience en trail"}
+ggplot(data_complete, aes(x = cluster, fill = start_trail)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+experience_table <- table(data_complete$cluster, data_complete$start_trail)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(experience_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+### Volume hebdomadaire consacré à la profession
+
+```{r, fig.cap = "Répartition du volume hebdomadaire consacré à la profession chez les courreurs"}
+ggplot(data_complete, aes(x = cluster, fill = weekly_volume_profession)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+profession_table <- table(data_complete$cluster, data_complete$weekly_volume_profession)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(profession_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+### Proportion des autres disciplines
+
+```{r, fig.cap = "Proportion de ces autres disciplines dans le volume total d'entraînement"}
+ggplot(data_complete, aes(x = cluster, fill = time_proportion_other_practice)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = "count", aes(label = ..count..),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(title = "") +
+  theme_bw()
+```
+
+```{r}
+# Créer la table de contingence
+other_table <- table(data_complete$cluster, data_complete$time_proportion_other_practice)
+
+# Effectuer le test du chi-carré
+chi_squared_test <- chisq.test(other_table)
+
+# Afficher le résultat du test
+print(chi_squared_test)
+```
+
+## Données sur les scores
+
+### Epanouissement
+
+```{r, fig.cap="Distribution de l'épanouissement des coureurs par groupe"}
+ggplot(data_sans_NA, aes(x = as.factor(cluster), y = fulfillment)) +
+  geom_boxplot() +
+  theme_bw() + 
+  xlab("Groupes")
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(fulfillment ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+```
+
+### Conflits entre vie personnelle et pratique de l’activité sportive
+
+```{r, fig.cap="Distribution des conflits entre vie personnelle et pratique de l’activité sportive "}
+ggplot(data_sans_NA, aes(x = as.factor(cluster), y = priority)) +
+  geom_boxplot() +
+  theme_bw() + 
+  labs(title = "") + 
+  ylab("") + 
+  xlab("Groupes")
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(priority ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+```
+
+### Motivations
+
+```{r}
+intrinsic_motivation <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = intrinsic_motivation)) +
+  geom_boxplot() +
+  labs(title = "Motivation intrinsèque") + 
+  theme_bw() +
+  ylab("") + 
+  xlab("Groupes")
+
+identified_motivation <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = identified_motivation)) +
+  geom_boxplot() +
+  labs(title = "Motivation identifiée") + 
+  theme_bw() +
+  ylab("") + 
+  xlab("Groupes")
+
+integrated_motivation <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = integrated_motivation)) +
+  geom_boxplot() +
+  labs(title = "Motivation intégrée") + 
+  theme_bw() +
+  ylab("") + 
+  xlab("Groupes")
+
+introjected_motivation <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = introjected_motivation)) +
+  geom_boxplot() +
+  labs(title = "Motivation introjectée") + 
+  theme_bw() +
+  ylab("") + 
+  xlab("Groupes")
+
+external_motivation <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = external_motivation)) +
+  geom_boxplot() +
+  labs(title = "Motivation externe") + 
+  theme_bw() +
+  ylab("") + 
+  xlab("Groupes")
+
+ggarrange(intrinsic_motivation, identified_motivation, integrated_motivation, introjected_motivation, external_motivation,
+    ncol = 2, nrow = 3, legend = "none"
+)
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(intrinsic_motivation ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+
+t_test_result <- t.test(identified_motivation ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(integrated_motivation ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(introjected_motivation ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(external_motivation ~ cluster, data = data_sans_NA)
+print(t_test_result)
+```
+
+### Force mentale 
+
+```{r}
+global_mental_force <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = global_mental_force)) +
+  geom_boxplot() +
+  labs(title = "Force mentale") + 
+  ylab("") + 
+  theme_bw() +
+  xlab("Groupes")
+
+confidence <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = confidence)) +
+  geom_boxplot() +
+  labs(title = "Confiance") + 
+  theme_bw() + 
+  ylab("") +
+  xlab("Groupes")
+
+consistency <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = consistency)) +
+  geom_boxplot() +
+  labs(title = "Consistance") + 
+  theme_bw() + 
+  ylab("") +
+  xlab("Groupes")
+
+control <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = control)) +
+  geom_boxplot() +
+  labs(title = "Contrôle") + 
+  theme_bw() + 
+  ylab("") +
+  xlab("Groupes")
+
+ggarrange(global_mental_force, confidence, consistency, control,
+    ncol = 2, nrow = 2, legend = "none"
+)
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(global_mental_force ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+
+t_test_result <- t.test(confidence ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(consistency ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(control ~ cluster, data = data_sans_NA)
+print(t_test_result)
+```
+
+### Discours interne 
+
+```{r}
+general_internal_speech <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = general_internal_speech)) +
+  geom_boxplot() +
+  labs(title = "Discours interne") + 
+  theme_bw() + 
+  ylab("") + 
+  xlab("Groupes")
+
+competition_internal_speech <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = competition_internal_speech)) +
+  geom_boxplot() +
+  labs(title = "Discours interne en compétition") + 
+  theme_bw() + 
+  ylab("") + 
+  xlab("Groupes")
+
+training_internal_speech <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = training_internal_speech)) +
+  geom_boxplot() +
+  labs(title = "Discours interne à l’entrainement") + 
+  theme_bw() + 
+  ylab("") + 
+  xlab("Groupes")
+
+ggarrange(general_internal_speech, competition_internal_speech, training_internal_speech,
+    ncol = 2, nrow = 2, legend = "none"
+)
+```
+
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(general_internal_speech ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+
+t_test_result <- t.test(competition_internal_speech ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(training_internal_speech ~ cluster, data = data_sans_NA)
+print(t_test_result)
+```
+
+### Anxieté
+
+```{r}
+general_precompetitive_anxiety <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = general_precompetitive_anxiety)) +
+  geom_boxplot() +
+  labs(title = "Anxiété générale") + 
+  theme_bw()  + 
+  ylab("") + 
+  xlab("Groupes")
+
+somatic_anxiety <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = somatic_anxiety)) +
+  geom_boxplot() +
+  labs(title = "Anxiété somatique") + 
+  theme_bw()  + 
+  ylab("") + 
+  xlab("Groupes")
+
+cognitive_anxiety <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = cognitive_anxiety)) +
+  geom_boxplot() +
+  labs(title = "Anxiété cognitive") + 
+  theme_bw()  + 
+  ylab("") + 
+  xlab("Groupes")
+
+ggarrange(general_precompetitive_anxiety, somatic_anxiety, cognitive_anxiety,
+    ncol = 2, nrow = 2, legend = "none"
+)
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(general_precompetitive_anxiety ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+
+t_test_result <- t.test(somatic_anxiety ~ cluster, data = data_sans_NA)
+print(t_test_result)
+
+t_test_result <- t.test(cognitive_anxiety ~ cluster, data = data_sans_NA)
+print(t_test_result)
+```
+
+### Passions
+
+```{r}
+harmonious_hobbies <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = harmonious_hobbies)) +
+  geom_boxplot() +
+  labs(title = "Passion harmonieuse") + 
+  theme_bw() + 
+  ylab("") + 
+  xlab("Groupes")
+
+obsessive_hobbies <- ggplot(data_sans_NA, aes(x = as.factor(cluster), y = obsessive_hobbies)) +
+  geom_boxplot() +
+  labs(title = "Passion obsessive") + 
+  theme_bw() + 
+  ylab("") + 
+  xlab("Groupes")
+
+ggarrange(harmonious_hobbies,obsessive_hobbies,
+    ncol = 2, legend = "none"
+)
+```
+
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(harmonious_hobbies ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+
+t_test_result <- t.test(obsessive_hobbies ~ cluster, data = data_sans_NA)
+print(t_test_result)
+```
+
+### Addiction
+
+```{r, fig.cap = "Distribution de l'addiction par groupe"}
+ggplot(data_sans_NA, aes(x = as.factor(cluster), y = addiction)) +
+  geom_boxplot() +
+  theme_bw() + 
+  xlab("Groupes")
+```
+
+```{r}
+# Effectuer le test t de Student
+t_test_result <- t.test(addiction ~ cluster, data = data_sans_NA)
+
+# Afficher le résultat du test t
+print(t_test_result)
+```
+
+\newpage
+# Conclusion 
+
+

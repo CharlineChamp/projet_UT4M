@@ -1,0 +1,769 @@
+---
+title: "Pourcentages_zones_160km"
+author: "CHAUVEAU Alice"
+date: "2024-02-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(forcats)
+library(lme4)
+```
+
+\newpage
+\tableofcontents
+\newpage
+
+# Récupération des données et séparation
+
+```{r}
+# Importation des données"
+data<- read.csv2("data_glucoseV1.csv")
+
+# Récupérer données du 160km
+data_160km <- data %>% filter(course == "160 km")
+
+#mise en forme des colonnes de la base 
+data_160km$datetime <- as.POSIXct(data_160km$datetime, format = "%Y-%m-%d %H:%M:%S")
+```
+
+#####################################################################################
+##Temps passé dans les zones de glycémie pendant la course Général
+#Filtrer les données pendant la course
+```{r}
+filtered_data_160km_course <- data_160km %>%
+  filter(datetime >= as.POSIXct("2023-07-21 09:00:00") & datetime <= as.POSIXct("2023-07-23 17:23:20"))
+```
+
+#Rassemblement des données de course pour chaque participant 
+```{r}
+#abandons
+participant36<- filtered_data_160km_course %>% filter(numero_participant==36)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 15:13:00"))
+participant35 <- filtered_data_160km_course %>% filter(numero_participant==35)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 13:23:01"))
+participant34 <- filtered_data_160km_course %>% filter(numero_participant==34)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 11:12:39"))
+participant16 <- filtered_data_160km_course %>% filter(numero_participant==16)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 21:08:58"))
+participant15 <- filtered_data_160km_course %>% filter(numero_participant==15)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 17:13:10"))
+participant12 <- filtered_data_160km_course %>% filter(numero_participant==12)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 12:04:17"))
+participant3 <- filtered_data_160km_course %>% filter(numero_participant==3)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 13:44:49"))
+
+#finishers
+participant1 <- filtered_data_160km_course %>% filter(numero_participant==1)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 11:25:16"))
+participant5 <- filtered_data_160km_course %>% filter(numero_participant==5)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:21:02"))
+participant7 <- filtered_data_160km_course %>% filter(numero_participant==7)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 19:00:08"))
+participant8 <- filtered_data_160km_course %>% filter(numero_participant==8)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 17:23:20"))
+participant9 <- filtered_data_160km_course %>% filter(numero_participant==9)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:41:33"))
+participant17 <- filtered_data_160km_course %>% filter(numero_participant==17)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 20:24:39"))
+participant20 <- filtered_data_160km_course %>% filter(numero_participant==20)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:48:33"))
+participant22 <- filtered_data_160km_course %>% filter(numero_participant==22)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:25:47"))
+participant24 <- filtered_data_160km_course %>% filter(numero_participant==24)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:23:43"))
+participant25 <- filtered_data_160km_course %>% filter(numero_participant==25)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 16:46:37"))
+participant28 <- filtered_data_160km_course %>% filter(numero_participant==28)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 01:59:06"))
+participant30 <- filtered_data_160km_course %>% filter(numero_participant==30)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 00:58:21"))
+participant33 <- filtered_data_160km_course %>% filter(numero_participant==33)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 01:35:53"))
+
+#Création du dataframe avec tous les participants
+dataframe_glycemie_course=rbind(participant36,participant35,participant34,participant16,participant15,participant12,participant3,participant1,participant5,participant7,participant8,participant9,participant17,participant20,participant22,participant24,participant25,participant28,participant30,participant33)
+
+#Création du dataframe avec les participants ayant abandonné
+data_frame_finishers=rbind(participant1,participant5,participant7,participant8,participant9,participant17,participant20,participant22,participant24,participant25,participant28,participant30,participant33)
+
+#Création du dataframe avec tous participants ayant fini
+data_frame_abandons=rbind(participant36,participant35,participant34,participant16, participant15, participant12, participant3)
+
+```
+
+#Pourcentage dans les zones général
+```{r message=FALSE, warning=FALSE}
+#Récupération des données
+pourcent_glycemie_zone_general=dataframe_glycemie_course%>%select(glucose)
+
+#Création de la colonne avec Hyperglycémie-Hypoglycémie-Normal
+pourcent_glycemie_zone_general$zone=ifelse(pourcent_glycemie_zone_general$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone_general$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des pourcentages
+table_generale<-pourcent_glycemie_zone_general%>%group_by(zone)%>%summarize("nb"=n())
+table_generale$nb=table_generale$nb/dim(pourcent_glycemie_zone_general)[1]*100
+table_generale
+
+#Graphique
+ggplot(table_generale, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+
+```
+##Temps passé dans les zones de glycémie pendant la course pour abandons
+```{r}
+#Récupération des données
+pourcent_glycemie_zone_abandons=data_frame_abandons%>%select(glucose)
+
+#Création de la colonne avec Hyperglycémie-Hypoglycémie-Normal
+pourcent_glycemie_zone_abandons$zone=ifelse(pourcent_glycemie_zone_abandons$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone_abandons$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des pourcentages
+table_abandon<-pourcent_glycemie_zone_abandons%>%group_by(zone)%>%summarize("nb"=n())
+table_abandon$nb=table_abandon$nb/dim(pourcent_glycemie_zone_abandons)[1]*100
+table_abandon
+
+#Graphique
+ggplot(table_abandon, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour les abandons",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+##Temps passé dans les zones de glycémie pendant la course pour finishers
+```{r}
+#Récupération des données
+pourcent_glycemie_zone_finishers=data_frame_finishers%>%select(glucose)
+
+#Création de la colonne avec Hyperglycémie-Hypoglycémie-Normal
+pourcent_glycemie_zone_finishers$zone=ifelse(pourcent_glycemie_zone_finishers$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone_finishers$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des pourcentages
+table_finisher<-pourcent_glycemie_zone_finishers%>%group_by(zone)%>%summarize("nb"=n())
+table_finisher$nb=table_finisher$nb/dim(pourcent_glycemie_zone_finishers)[1]*100
+table_finisher
+
+#Graphique
+ggplot(table_finisher, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour les finishers",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Graphiques abandon vs finisher 
+
+```{r}
+#récupération données finisher
+table_finisher$type="finisher"
+
+#récupération données abandon
+table_abandon$type="abandon"
+
+#création dataframe final
+df_final=rbind(table_finisher,table_abandon)
+
+#Réordonner les facteurs pour l'ordre d'appartition dans le graphique 
+df_final$zone=as.factor(df_final$zone)
+levels(df_final$zone)
+df_final$zone=fct_relevel(df_final$zone, c("Hyperglycémie", "Normal", "Hypoglycémie"))
+
+#Graphiques
+ggplot(df_final, aes(x=zone, y=nb, fill=type)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant le 160km",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal()+scale_fill_manual(values=c("brown1","darkolivegreen3"))
+
+ggplot(df_final, aes(x=type, y=nb, fill=zone)) +
+  geom_bar(stat="identity", width=0.5)+
+  geom_text(aes(label = sprintf("%.1f%%", nb)), 
+            position = position_stack(vjust = 0.5), 
+            color = "white", 
+            size = 3) +
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant le 160km",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal()+scale_fill_manual(values=c("brown1","darkolivegreen3", "cornflowerblue"))
+
+
+
+```
+```{r}
+#Graphiques
+ggplot(df_final, aes(x=zone, y=nb, fill=type)) +
+  geom_bar(stat="identity", width=0.5,position=position_dodge())+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant le 160km",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() +scale_fill_manual(values=c("brown1","darkolivegreen3"))
+
+
+ggplot(df_final, aes(x=type, y=nb, fill=zone)) +
+  geom_bar(stat="identity", width=0.5,position=position_dodge())+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant le 160km",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() +scale_fill_manual(values=c("brown1","darkolivegreen3", "cornflowerblue"))
+```
+#Tests proportions
+```{r}
+#dataframe finisher
+pourcent_glycemie_zone_finishers=data_frame_finishers%>%select(glucose, numero_participant)
+pourcent_glycemie_zone_finishers$zone=ifelse(pourcent_glycemie_zone_finishers$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone_finishers$glucose<90,"Hypoglycémie","Normal"))
+#ajout de la colonne finisher
+pourcent_glycemie_zone_finishers$type="finisher"
+
+#dataframe abandon
+pourcent_glycemie_zone_abandons=data_frame_abandons%>%select(glucose, numero_participant)
+pourcent_glycemie_zone_abandons$zone=ifelse(pourcent_glycemie_zone_abandons$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone_abandons$glucose<90,"Hypoglycémie","Normal"))
+#ajout de la colonne abandon
+pourcent_glycemie_zone_abandons$type="abandon"
+
+#dataframe final
+df=rbind(pourcent_glycemie_zone_finishers,pourcent_glycemie_zone_abandons)
+df=df%>%select(!glucose)
+
+#dataframe avec numero de participant 
+num=df%>%select(numero_participant,type)
+num=unique(num)
+
+#groupby participant et faire la somme totale des données en hypo/hyper et normal
+total=df%>%group_by(numero_participant)%>%summarize("total"=n())
+
+#ajouter le numero de participant 
+final_1= total %>% left_join(num)
+
+#groupby zone et participant et faire la somme des données en hypo/hyper et normal
+df=df%>%group_by(zone,numero_participant)%>%summarize("nb"=n())
+final_2=df%>% left_join(final_1, by='numero_participant')
+
+#calculer la proportion dans les zones 
+final_2$prop=final_2$nb/final_2$total*100
+final_2=final_2%>%select(!c(nb,total))
+
+# Effectuer le test de Student hypoglycémie
+finisher_data_hypo <- final_2%>%filter(type == "finisher")%>%filter(zone=="Hypoglycémie")
+abandon_data_hypo <- final_2%>%filter(type == "abandon")%>%filter(zone=="Hypoglycémie")
+cat("hypoglycemie")
+result_t_test_hypo <- t.test(finisher_data_hypo$prop, abandon_data_hypo$prop)
+result_t_test_hypo
+
+# Effectuer le test de Student hyperglycémie
+finisher_data_hyper <- final_2%>%filter(type == "finisher")%>%filter(zone=="Hyperglycémie")
+abandon_data_hyper <- final_2%>%filter(type == "abandon")%>%filter(zone=="Hyperglycémie")
+cat("hyperglycemie")
+result_t_test_hyper <- t.test(finisher_data_hyper$prop, abandon_data_hyper$prop)
+result_t_test_hyper
+
+# Effectuer le test de Student normal
+finisher_data_normal <- final_2%>%filter(type == "finisher")%>%filter(zone=="Normal")
+abandon_data_normal <- final_2%>%filter(type == "abandon")%>%filter(zone=="Normal")
+cat("normal")
+result_t_test_normal <- t.test(finisher_data_normal$prop, abandon_data_normal$prop)
+result_t_test_normal
+```
+
+
+
+#####################################################################################
+##Temps passé dans les zones de glycémie pendant la course pour chaque participant 
+### abandons
+
+#Coureur 3
+```{r message=FALSE, warning=FALSE}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==3)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 13:44:49"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_3=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 3 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+
+```
+#Coureur 12
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==12)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 12:04:17"))
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+  
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_12=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 12 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+
+```
+#Coureur 15
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==15)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 17:13:10"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_15=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 15 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 16
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==16)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 21:08:58"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_16=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 16 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 34
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==34)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 11:12:39"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_34=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 34 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 35
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==35)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 13:23:01"))
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_35=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 35 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 36
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==36)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 15:13:00"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_36=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 36 (abandon)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+
+```{r}
+part_12
+part_15
+part_16
+part_3
+part_34
+part_35
+part_36
+```
+
+### finishers 
+
+#Coureur 1
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==1)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 11:25:16"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_1=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 1 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 5
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==5)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:21:02"))
+
+# Tracer le graphique avec un axe des abscisses plus précis
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_5=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 5 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 7
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==7)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 19:00:08"))
+
+# Tracer le graphique avec un axe des abscisses plus précis
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_7=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 7 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 8
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==8)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 17:23:20"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_8=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 8 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 9
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==9)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:41:33"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_9=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 9 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 17
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==17)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 20:24:39"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_17=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 17 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 20
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==20)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:48:33"))
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_20=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 20 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 22
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==22)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:25:47"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_22=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 22 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 24
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==24)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:23:43"))
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_24=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 24 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 25
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==25)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 16:46:37"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_25=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 25 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 28
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==28)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 01:59:06"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_28=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 28 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+#Coureur 30
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==30)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 00:58:21"))
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_30=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 30 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+#Coureur 33
+```{r}
+#Sélection des données 
+grouped_data_160km <- filtered_data_160km_course %>% filter(numero_participant==33)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 01:35:53"))
+
+
+pourcent_glycemie_zone=grouped_data_160km%>%select(glucose)
+pourcent_glycemie_zone$zone=ifelse(pourcent_glycemie_zone$glucose>140,"Hyperglycémie",ifelse(pourcent_glycemie_zone$glucose<90,"Hypoglycémie","Normal"))
+
+#Calcul des proportions
+table<-pourcent_glycemie_zone%>%group_by(zone)%>%summarize("nb"=n())
+table$nb=table$nb/dim(pourcent_glycemie_zone)[1]*100
+table
+
+#Graphique
+part_33=ggplot(table, aes(x=zone, y=nb)) +
+  geom_bar(stat="identity", width=0.5)+
+  labs(title = "Proportion de temps passé dans les zones de glycémie \n pendant la course sur le 160km pour le coureur 33 (finisher)",
+       x = "Zone",
+       y = "Pourcentage")+theme_minimal() 
+```
+
+```{r}
+part_1
+part_5
+part_7
+part_8
+part_9
+part_17
+part_20
+part_22
+part_24
+part_25
+part_28
+part_30
+part_33
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,419 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=FALSE, results="verbatim", warning=FALSE)
+```
+
+```{r packages, include=FALSE}
+library(readxl)
+library(dplyr)
+library(stringr)
+library(rstatix)
+```
+
+\newpage
+\tableofcontents
+\newpage
+
+```{r data}
+df <- read_excel("~/Documents/GitHub/UT4M_psycho/Data/dataset_V5.xlsx")
+```
+
+```{r multiple_choice_fun}
+# Fonction pour séparer les choix multiples
+choix_multiples = function(data, choix, nom_colonne, colonne){
+  matrice = matrix(nrow = dim(data)[1],ncol = length(choix))
+  df = as.data.frame(matrice)
+  for (j in 1 :length(choix)){
+    vecteur = c()
+    for (i in 1 : length(colonne)){
+      if(is.na(colonne[i])==FALSE){
+        if(str_detect(colonne[i],choix[j])==TRUE){
+          vecteur = c(vecteur,0)
+        }
+        else{ vecteur = c(vecteur,1)}
+      }
+      else{vecteur = c(vecteur,1)}
+    }
+    df[j]=vecteur
+  }
+  colnames(df) = nom_colonne
+  return(df)
+}
+```
+
+```{r data_formatting}
+# Suppression du numéro de dossier, de la taille,colonnes à choix multiples
+data = df[-c(1,7,10,11,28,29,31,33,35,38,39,43,44)]
+
+# Suppression des dernières colonnes
+data = data[-c(53:58)]
+
+# Redéfinition des types de données
+for(ncol in seq(from = 1, to = length(data), by = 1)[-c(2:5,14,33:52)]){
+  data[[ncol]] <- as.factor(data[[ncol]])
+}
+
+# Réordonnancement des levels
+data$weekly_volume_profession <- ordered(data$weekly_volume_profession,
+                                         levels = c("⩽ 35 heures / semaine" ,
+                                                    "entre 36 et 45 heures / semaine",
+                                                    "⩾ 45h / semaine" ))
+data$start_trail <- ordered(data$start_trail, 
+                            levels = c("< 2 ans" , "Entre 2 et 5 ans",
+                                       "Entre 5 et 10 ans", "> 10 ans"))
+data$time_proportion_other_practice <- ordered(data$time_proportion_other_practice, 
+                                               levels = c("< 20%", "Entre 20% et 50%",
+                                                          "> 50%"))
+data$coach_for_trail <- ordered(data$coach_for_trail, 
+                                levels = c("Oui", "Non"))
+data$heart_rate_monitor_train <- ordered(data$heart_rate_monitor_train, 
+                                         levels = c("Oui", "Non"))
+data$heart_rate_monitor_competition <- ordered(data$heart_rate_monitor_competition, 
+                                               levels = c("Oui", "Non"))
+data$connected_platform <- ordered(data$connected_platform, 
+                                   levels = c("Oui", "Non"))
+data$ITRA_rating_know <- ordered(data$ITRA_rating_know, 
+                                 levels = c("Oui", "Non"))
+data$number_hours_practice_trail_phase_preparation = ordered(data$number_hours_practice_trail_phase_preparation,
+                                                             levels=c('⩽ 3 heures / semaine',
+                                                                      'Entre 3h et 7h / semaine',
+                                                                      'Entre 7h et 12h / semaine',
+                                                                      '> 12 heures / semaine'))
+data$drop_practice_trail_phase_preparation = ordered(data$drop_practice_trail_phase_preparation,
+                                                     levels=c('< 1000m / semaine',
+                                                              'Entre 1000m et 2000m / semaine', 
+                                                              '> 2000m / semaine'))
+data$kilometres_practice_trail_phase_preparation = ordered(data$kilometres_practice_trail_phase_preparation,
+                                                           levels=c('< 20km / semaine',
+                                                                    'Entre 20km et 50km / semaine',
+                                                                    'Entre 50km et 80km / semaine',
+                                                                    '> 80km / semaine'))
+data$number_hours_training_trail_phase_preparation = ordered(data$number_hours_training_trail_phase_preparation,
+                                                             levels=c('⩽ 3 heures / semaine',
+                                                                      'Entre 3h et 7h / semaine',
+                                                                      'Entre 7h et 12h / semaine',
+                                                                      '> 12 heures / semaine'))
+data$trail_participation_last_two_seasons <- ordered(data$trail_participation_last_two_seasons, 
+                                                     levels = c("Oui", "Non"))
+data$distance_trail_participation_last_two_seasons=ordered(data$distance_trail_participation_last_two_seasons, 
+                                                           levels=c("< 40km", "De 40km à 80km", "> 80km"))
+data$frequence_trail_participation_last_two_seasons_by_season=ordered(data$frequence_trail_participation_last_two_seasons_by_season, 
+                                                                      levels=c("1 à 3 courses / saison", 
+                                                                               "4 à 8 courses / saison", 
+                                                                               "> 8 courses / saison"))
+data$which_races_UT4M_2023 <- ordered(data$which_races_UT4M_2023, 
+                                      levels = c("Un des 20km", "Un des 40km",
+                                                 "80km Challenge","100km Master",
+                                                 "160km Xtrem / 160km Challenge"))
+data$diet <- ordered(data$diet,
+                     levels = c("Oui", "Non"))
+data$volume_drink_during_training <- ordered(data$volume_drink_during_training, 
+                                             levels = c("< 250mL / heure",
+                                                        "Entre 250mL et 500mL / heure",
+                                                        "> 500mL / heure"))
+data$volume_drink_during_competition <- ordered(data$volume_drink_during_competition, 
+                                                levels = c("< 250mL / heure",
+                                                           "Entre 250mL et 500mL / heure",
+                                                           "> 500mL / heure"))
+data$frequence_hours_eat_during_training <- ordered(data$frequence_hours_eat_during_training, 
+                                                    levels = c("< 1x / heure",
+                                                               "1x ou 2x / heure",
+                                                               "> 2x / heure"))
+data$frequence_hours_eat_during_competition <- ordered(data$frequence_hours_eat_during_competition, 
+                                                       levels = c("< 1x / heure",
+                                                                  "1x ou 2x / heure",
+                                                                  "> 2x / heure"))
+data$trail_injury_illness <- ordered(data$trail_injury_illness, 
+                                     levels = c("Oui","Non"))
+data$trail_health_problem_involve_no_training <- ordered(data$trail_health_problem_involve_no_training, 
+                                                         levels = c("Oui","Non"))
+data$time_trail_health_problem_involve_no_training <- ordered(data$time_trail_health_problem_involve_no_training, 
+                                                              levels = c("< 2 semaines",
+                                                                         "2 à 4 semaines",
+                                                                         "5 à 8 semaines",
+                                                                         "> 8 semaines"))
+data$frequence_medical_apointment_trail <- ordered(data$frequence_medical_apointment_trail, 
+                                                   levels = c("< 2x / an",
+                                                              "2x à 6x / an",
+                                                              "> 6x / an"))
+data$smoke <- ordered(data$smoke, 
+                      levels = c("Oui","Non"))
+
+# Séparation des données catégorielles et continues
+data_cat <- data[,-c(2:5,14,33:52)]
+data_cont <- data[,c(2:5,14,33:52)]
+
+# Définition du dataframe pour le tableau par course
+vec_choix = c("Un des 20km","Un des 40km","80km Challenge","100km Master","160km Xtrem / 160km Challenge")
+vec_nom_colonne = c("race_20","race_40", "race_80", "race_100", "race_160")
+colonne = data$which_races_UT4M_2023
+
+dataRACE = choix_multiples(data, vec_choix, vec_nom_colonne, colonne)
+dataRACE = cbind(data,dataRACE)
+dataRACE = dataRACE %>% select(!which_races_UT4M_2023)
+
+dataRACE_20 = dataRACE %>% select(!c(race_40,race_80,race_100,race_160))
+dataRACE_20$race_20 <- ifelse(dataRACE_20$race_20 == 0,"Un des 20km",NA)
+dataRACE_20 = dataRACE_20 %>% filter(!is.na(race_20))
+dataRACE_20 = rename(dataRACE_20,"race" = "race_20")
+
+dataRACE_40 = dataRACE %>% select(!c(race_20,race_80,race_100,race_160))
+dataRACE_40$race_40 <- ifelse(dataRACE_40$race_40 == 0,"Un des 40km",NA)
+dataRACE_40 = dataRACE_40 %>% filter(!is.na(race_40))
+dataRACE_40 = rename(dataRACE_40,"race" = "race_40")
+
+dataRACE_80 = dataRACE %>% select(!c(race_20,race_40,race_100,race_160))
+dataRACE_80$race_80 <- ifelse(dataRACE_80$race_80 == 0,"80km Challenge",NA)
+dataRACE_80 = dataRACE_80 %>% filter(!is.na(race_80))
+dataRACE_80 = rename(dataRACE_80,"race" = "race_80")
+
+dataRACE_100 = dataRACE %>% select(!c(race_20,race_40,race_80,race_160))
+dataRACE_100$race_100 <- ifelse(dataRACE_100$race_100 == 0,"100km Master",NA)
+dataRACE_100 = dataRACE_100 %>% filter(!is.na(race_100))
+dataRACE_100 = rename(dataRACE_100,"race" = "race_100")
+
+dataRACE_160 = dataRACE %>% select(!c(race_20,race_40,race_80,race_100))
+dataRACE_160$race_160 <- ifelse(dataRACE_160$race_160 == 0,"160km Xtrem / 160km Challenge",NA)
+dataRACE_160=dataRACE_160%>%filter(!is.na(race_160))
+dataRACE_160=rename(dataRACE_160,"race"="race_160")
+
+dataRACE = rbind(dataRACE_20,dataRACE_40,dataRACE_80,dataRACE_100,dataRACE_160)
+
+dataRACE$race <- as.factor(dataRACE$race)
+dataRACE$race <- ordered(dataRACE$race, 
+                         levels = c("Un des 20km", "Un des 40km",
+                                    "80km Challenge","100km Master",
+                                    "160km Xtrem / 160km Challenge"))
+
+dataRACE_cat <- dataRACE[,-c(2:5,14,32:51)]
+dataRACE_cont <- dataRACE[,c(2:5,14,32:51)]
+
+# Définition du dataframe pour le tableau par côte ITRA
+ITRA_rating = as.factor(ifelse(data_cont$ITRA_rating <= 500, "ITRA < ou = à 500", "ITRA > à 500"))
+dataITRA_cat <- data.frame(data_cat,ITRA_rating)
+dataITRA_cont <- data_cont[,-which(colnames(data_cont) == "ITRA_rating")]
+```
+
+```{r tableaux_fun}
+# Fonctions pour exécuter le test du khi-deux
+independance <- function(colonne1,colonne2,nom_colonne2){
+  tab_contingence <- t(table(colonne1,colonne2))
+  test_khi_deux <- chisq.test(tab_contingence)
+  
+  res_tab_contingence <- rep(" ",dim(tab_contingence)[1])
+  for(i in dim(tab_contingence)[2]:1){
+    res_tab_contingence <- cbind.data.frame(tab_contingence[,i],res_tab_contingence)
+  }
+  p.valeur <- c(rep(" ",dim(tab_contingence)[2]),test_khi_deux$p.value)
+  result <- cbind.data.frame(c(nom_colonne2,levels(colonne2)),rbind.data.frame(p.valeur,res_tab_contingence))
+  colnames(result) <- c(" ",levels(colonne1),"p-valeur")
+  rownames(result) <- c()
+  return(result)
+}
+
+tableau_independance <- function(data_cat,nom_colonne){
+  by = data_cat[[nom_colonne]]
+  data2 <- data_cat[,-which(colnames(data_cat) == nom_colonne)]
+  tab <- data.frame()
+  for(i in 1:dim(data2)[2]){
+    tab <- rbind.data.frame(tab,independance(by,data2[[i]],colnames(data2[i])))
+  }
+  tab$`p-valeur` <- format(p.adjust(tab$`p-valeur`,'BY'),scientific=TRUE,digits=3)
+  tab$`p-valeur`[tab$`p-valeur` == "      NA"] <- " "
+  return(tab)
+}
+
+# Fonctions pour exécuter le test de Student
+comparaison_moyennes <- function(colonne1,colonne2,nom_colonne2){
+  test_student <- t.test(colonne2~colonne1,var.equal=TRUE)
+  
+  result <- cbind.data.frame(nom_colonne2,round(t(test_student$estimate),2),test_student$p.value)
+  colnames(result) <- c(" ",paste0("moyenne ",levels(colonne1)),"p-valeur")
+  rownames(result) <- c()
+  return(result)
+}
+
+tableau_comparaison_moyennes <- function(data_cat,data_cont,nom_colonne){
+  by = data_cat[[nom_colonne]]
+  tab <- data.frame()
+  for(i in 1:dim(data_cont)[2]){
+    tab <- rbind.data.frame(tab,comparaison_moyennes(by,data_cont[[i]],colnames(data_cont[i])))
+  }
+  tab$`p-valeur` <- format(p.adjust(tab$`p-valeur`,'BY'),scientific=TRUE,digits=3)
+  return(tab)
+}
+
+# Fonctions pour exécuter une anova
+comparaison_moyennes_2 <- function(colonne1,colonne2,nom_colonne2){
+  anova <- data.frame(colonne1,colonne2) %>% anova_test(colonne2 ~ colonne1)
+  
+  result <- cbind.data.frame(nom_colonne2,anova$p)
+  colnames(result) <- c(" ","p-valeur")
+  rownames(result) <- c()
+  return(result)
+}
+
+tableau_comparaison_moyennes_2 <- function(data_cat,data_cont,nom_colonne){
+  by = data_cat[[nom_colonne]]
+  tab <- data.frame()
+  for(i in 1:dim(data_cont)[2]){
+    tab <- rbind.data.frame(tab,comparaison_moyennes_2(by,data_cont[[i]],colnames(data_cont[i])))
+  }
+  tab$`p-valeur` <- format(p.adjust(tab$`p-valeur`,'BY'),scientific=TRUE,digits=3)
+  return(tab)
+}
+```
+
+# Sexe
+
+```{r tab_by_sex}
+independance_by_sex <- tableau_independance(data_cat,"sex")
+knitr::kable(independance_by_sex)
+
+moyennes_by_sex <- tableau_comparaison_moyennes(data_cat,data_cont,"sex")
+knitr::kable(moyennes_by_sex)
+```
+
+**Caractéristiques individuelles**
+
+- poids : les hommes ont un poids supérieur aux femmes : 55.59 - 57.13 - 58.50 en moyenne pour les femmes contre 70.62 - 72.11 - 74.44 en moyenne pour les hommes
+
+**Caractéristiques sportives**
+
+- connaissance de la côte ITRA
+
+- côte ITRA : les femmes ont une côte ITRA inférieur aux hommes : 476.48 pour les femmes contre 533.05 pour les hommes
+
+- distance du trail les deux dernières saisons
+- course effectuée en 2023
+
+**Alimentation & hydratation**
+
+- régime
+- volume bu en compétition
+
+**Santé physique**
+
+**Caractéristiques psychologiques**
+
+- force mentale : de manière générale, la force mentale des femmes est, en moyenne, inférieure à celle des hommes notamment au niveau de la confiance et du contrôle.
+
+- anxiété précompétitive : de manière générale, l'anxiété précompétitive des femmes est, en moyenne, supérieure à celle des hommes notamment au niveau de l'anxiété somatique et cognitive.
+
+# Course effectuée
+
+```{r tab_by_race}
+independance_by_rate <- tableau_independance(dataRACE_cat,"race")
+knitr::kable(independance_by_rate)
+
+moyennes_by_rate <- tableau_comparaison_moyennes_2(dataRACE_cat,dataRACE_cont,"race")
+knitr::kable(moyennes_by_rate)
+```
+
+**Caractéristiques individuelles**
+
+- sexe
+
+**Caractéristiques sportives**
+
+- début du trail  
+- connaissance de la côte ITRA
+- volume horaire pratique
+- dénivelé pratique
+- distance pratique
+- nombre d'heure d'entraînement
+- participation à une course lors des deux dernières saisons
+- distance trail lors des deux dernières saisons
+
+**Alimentation & hydratation**    
+       
+- volume bu en compétition
+
+**Santé physique**
+
+**Caractéristiques psychologiques**
+
+# Côte ITRA
+
+La côte ITRA est l’indice de performance le plus connu en trail. Elle sert à établir le classement de référence, mais aussi à comparer ses propres performances. Lors de chaque trail, l’International Trail Running Association (ITRA) calcule, pour chaque coureur, une côte en fonction de la performance réalisée. Dans ce calcul, seul le chronomètre final est pris en compte. Le classement n’a donc pas d’importance. La valeur maximale de la cote ITRA est de 1000 points. Ce nombre de points correspond à une performance maximale théorique, l’équivalent d’un record du monde comme la barrière des 2 heures au marathon. Pour établir cet indice, l’ITRA utilise la distance et le dénivelé communiqué par l’organisateur du trail. Une “distance à plat”, par exemple, est estimée en additionnant la distance et le dénivelé positif. 
+
+```{r tab_by_ITRA_rating}
+independance_by_ITRA_rating <- tableau_independance(dataITRA_cat,"ITRA_rating")
+knitr::kable(independance_by_ITRA_rating)
+
+moyennes_by_ITRA_rating <- tableau_comparaison_moyennes(dataITRA_cat,dataITRA_cont,"ITRA_rating")
+knitr::kable(moyennes_by_ITRA_rating)
+```
+
+**Caractéristiques individuelles**
+
+- sexe
+- âge : les personnes avec une côte ITRA plus faible sont en moyenne plus âgés : 42.26 ans en moyenne pour une côte ITRA <= 500 contre 34.55 en moyenne pour une côte ITRA >= 500
+
+**Caractéristiques sportives**
+
+- dénivelé pratique
+- distance pratique
+- nombre heures entraînement
+
+**Alimentation & hydratation**
+
+- volume bu compétition
+
+**Santé physique**
+
+**Caractéristiques psychologiques**
+
+- motivation intrinsèque : score plus élevé chez les personnes avec une côte ITRA plus grande : 0.86 en moyenne pour une côte ITRA <= 500 contre 0.91 en moyenne pour une côte ITRA >= 500
+
+- force mentale : de manière générale, une force mentale plus élevée chez les personnes avec une côte ITRA plus grande : 0.62 en moyenne pour une côte ITRA <= 500 contre  0.67 en moyenne pour une côte ITRA >= 500 notamment pour la confiance et la consistence
+
+# Expérience en trail
+
+```{r tab_by_experience}
+independance_by_start_trail <- tableau_independance(data_cat,"start_trail")
+knitr::kable(independance_by_start_trail)
+
+moyennes_by_start_trail <- tableau_comparaison_moyennes_2(data_cat,data_cont,"start_trail")
+knitr::kable(moyennes_by_start_trail)
+```
+
+**Caractéristiques individuelles**
+
+**Caractéristiques sportives**
+
+- connaissance de la côte ITRA 
+- nombre heures pratique
+- nombre heures entraînement
+- participation à un trail les deux dernières saisons
+- distance trail les deux dernières saisons
+- course UT4M 2023
+
+**Alimentation & hydratation**
+
+**Santé physique**
+
+**Caractéristiques psychologiques**
+
+# Blessure
+
+```{r tab_by_injury}
+independance_by_injury <- tableau_independance(data_cat,"trail_injury_illness")
+knitr::kable(independance_by_injury)
+
+moyennes_by_injury <- tableau_comparaison_moyennes(data_cat,data_cont,"trail_injury_illness")
+knitr::kable(moyennes_by_injury)
+```
+
+**Caractéristiques individuelles**
+
+**Caractéristiques sportives**
+
+**Alimentation & hydratation**
+
+**Santé physique**
+
+**Caractéristiques psychologiques**

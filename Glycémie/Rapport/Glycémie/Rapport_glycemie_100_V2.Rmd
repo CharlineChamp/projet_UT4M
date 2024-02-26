@@ -1,0 +1,897 @@
+---
+title: "Rapport glycémie 100"
+author: "CHAUVEAU Alice"
+date: "2024-02-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+```
+
+\newpage
+\tableofcontents
+\newpage
+
+# Récupération des données et séparation
+```{r}
+# Importation des données"
+data<- read.csv2("data_glucoseV1.csv")
+
+# Séparer les données en deux groupes pour chaque type de course
+data_100km <- data %>% filter(course == "100 km")
+
+#Mise en forme des colonnes de la base 
+data_100km$datetime <- as.POSIXct(data_100km$datetime, format = "%Y-%m-%d %H:%M:%S")
+```
+
+# Avant/Pendant/Après courses 
+
+## Par date
+
+#Mediane
+```{r}
+#Grouper les données par date et garder la valeur médiane pour chaque date 
+donnees_medianes_par_date <- data_100km %>%
+  group_by(as.Date(datetime)) %>%
+  summarise(Median_Glucose = median(glucose))
+```
+
+#Trouver le participant median
+```{r message=FALSE, warning=FALSE}
+# Calculer la médiane pour chaque date pour chaque participant
+donnees_medianes_par_date_participant <- data_100km %>%
+  group_by(as.Date(datetime), numero_participant) %>%
+  summarise(Median_Glucose = median(glucose))
+
+#Calculer le score pour chaque participant en comparant avec la médiane date par date 
+score=c()
+numero=c()
+for(i in 1:36){
+  data_transitoire=donnees_medianes_par_date_participant%>%filter(numero_participant==i)
+  if(dim(data_transitoire)[1]!=0){
+    numero=c(numero,unique(data_transitoire$numero_participant))
+    score=c(score,mean(abs(data_transitoire$Median_Glucose - donnees_medianes_par_date$Median_Glucose)))
+  }
+}
+
+#Data frame numero de participant - score 
+df_med=data.frame(numero,score)
+num_part_med_date=df_med%>%filter(score==min(score))%>%select(numero)
+
+#Filtrer le data avec le participant qui a le meilleur score (ici 23)
+data_graph_med_par_date=data_100km%>%filter(numero_participant==23)
+```
+
+#Creation Dataframe participant median ici le 23
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par date et garder la valeur médiane pour chaque date
+grouped_data_participant_median_par_date<- data_graph_med_par_date %>%
+  group_by(day = as.Date(datetime)) %>%
+  summarize(median_glucose = median(glucose))
+#Supprimer les valeurs na
+grouped_data_participant_median_par_date=grouped_data_participant_median_par_date%>%filter(!is.na(day))
+
+```
+
+#Quantile 0.25
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par date et garder le quantile 0.25 pour chaque date
+donnees_q1_par_date <- data_100km %>%
+  group_by(as.Date(datetime)) %>%
+  summarise(q1_glucose = quantile(glucose, 0.25))
+```
+
+#Quantile 0.75
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par date et garder le quantile 0.75 pour chaque date 
+donnees_q3_par_date <- data_100km %>%
+  group_by(as.Date(datetime)) %>%
+  summarise(q3_glucose = quantile(glucose, 0.75))
+```
+
+#Mise en forme données 
+```{r}
+#Mise en forme des données médianes globale
+donnees_medianes_par_date=donnees_medianes_par_date%>%filter(!is.na(`as.Date(datetime)`))
+donnees_medianes_par_date=donnees_medianes_par_date%>%filter(`as.Date(datetime)`<="2023-07-27")
+colnames(donnees_medianes_par_date)=c("day","glucose_mediane_general")
+
+#Mise en forme des données q1
+donnees_q1_par_date=donnees_q1_par_date%>%filter(!is.na(`as.Date(datetime)`))
+donnees_q1_par_date=donnees_q1_par_date%>%filter(`as.Date(datetime)`<="2023-07-27")
+colnames(donnees_q1_par_date)=c("day","glucose_q1")
+
+#Mise en forme des données q3
+donnees_q3_par_date=donnees_q3_par_date%>%filter(!is.na(`as.Date(datetime)`))
+donnees_q3_par_date=donnees_q3_par_date%>%filter(`as.Date(datetime)`<="2023-07-27")
+colnames(donnees_q3_par_date)=c("day","glucose_q3")
+```
+
+#Création dataframe final pour tracer le graphique avec les données médianes générales, données q1, données q3 et données du participant médian
+```{r}
+data_f_day=mutate(grouped_data_participant_median_par_date,donnees_medianes_par_date,donnees_q1_par_date,donnees_q3_par_date)
+```
+
+#Graphique médiane et quantiles du glucose par jour avant, pendant et après la course 100km
+```{r message=FALSE, warning=FALSE}
+ggplot(data_f_day, aes(x = day, y = glucose_mediane_general)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = glucose_q1, ymax = glucose_q3), alpha = 0.3, fill = "lightgreen") +
+  labs(title = "Médiane et quantiles du glucose par jour avant, pendant et après la course 100km",
+       x = "Jour",
+       y = "Médiane du glucose") +
+  theme_minimal() +
+  scale_x_date(date_labels = "%d/%m/%Y", date_breaks = "1 day") +
+  geom_line(aes(x = day, y = median_glucose), color = "darkblue", linetype = "dashed") + 
+  theme(axis.text.x = element_text(angle = 90, size=7, hjust = 1)) +
+  geom_vline(xintercept = as.Date("2023-07-22"), linetype = "dashed", color = "red") +
+  geom_vline(xintercept = as.Date("2023-07-23"), linetype = "dashed", color = "red")+
+  annotate("text", x = as.Date("2023-07-19"), y = 110, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = as.Date("2023-07-22"), y = 130, label = "Pendant la course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = as.Date("2023-07-24"), y = 110, label = "Après la course", vjust = 1, hjust = -0.5, color = "black")+annotate("text", x = as.Date("2023-07-13"), y = 115, label = "Participant", vjust = 1, hjust = -0.5, color = "darkblue")
+```
+#######################################################################################
+## Par heure
+#Mediane
+```{r}
+#Grouper les données par heure et garder la valeur médiane pour chaque heure
+donnees_medianes_par_h <- data_100km %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00"))) %>%
+  summarise(Median_Glucose = median(glucose))
+```
+
+#Trouver le participant median
+```{r message=FALSE, warning=FALSE}
+# Calculer la médiane pour chaque date pour chaque participant
+donnees_medianes_par_h_participant <- data_100km %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00")), numero_participant) %>%
+  summarise(Median_Glucose = median(glucose))
+
+#Calculer le score pour chaque participant en comparant avec la médiane heure par heure
+score=c()
+numero=c()
+for(i in 1:36){
+  data_transitoire=donnees_medianes_par_h_participant%>%filter(numero_participant==i)
+  if(dim(data_transitoire)[1]!=0){
+    numero=c(numero,unique(data_transitoire$numero_participant))
+    score=c(score,mean(abs(data_transitoire$Median_Glucose - donnees_medianes_par_h$Median_Glucose)))
+  }
+}
+#Data frame numero de participant - score 
+df_med_h=data.frame(numero,score)
+num_part_med_heure=df_med_h%>%filter(score==min(score))%>%select(numero)
+
+#Filtrer le data avec le participant qui a le meilleur score (ici 32)
+data_graph_med_heure=data_100km%>%filter(numero_participant==32)
+```
+
+#Quantile 0.25
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par date et garder le quantile 0.25 pour chaque heure
+donnees_q1_par_heure<- data_100km %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00")))%>%
+  summarise(q1_glucose = quantile(glucose, 0.25))
+```
+
+#Quantile 0.75
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par date et garder le quantile 0.75 pour chaque heure 
+donnees_q3_par_heure <- data_100km %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00"))) %>%
+  summarise(q3_glucose = quantile(glucose, 0.75))
+```
+
+#Creation dataframe participant median
+```{r message=FALSE, warning=FALSE}
+grouped_data_participant_median_par_heure<- data_graph_med_heure %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00"))) %>%
+  summarize(median_glucose = median(glucose))
+
+grouped_data_participant_median_par_heure=grouped_data_participant_median_par_heure%>%filter(!is.na(datetime))
+
+```
+
+#Mise en forme données 
+```{r}
+#Mise en forme des données médianes globale
+donnees_medianes_par_h=donnees_medianes_par_h%>%filter(!is.na(datetime))
+datetime_donnees <- as.character(donnees_medianes_par_h$datetime)
+datetime_part <- as.character(grouped_data_participant_median_par_heure$datetime)
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_medianes_par_h <- subset(donnees_medianes_par_h, datetime %in% datetime_donnees)
+colnames(donnees_medianes_par_h)=c("datetime","glucose_mediane_general")
+
+#Mise en forme des données q1
+donnees_q1_par_heure=donnees_q1_par_heure%>%filter(!is.na(datetime))
+datetime_donnees <- as.character(donnees_q1_par_heure$datetime)
+datetime_part <- as.character(grouped_data_participant_median_par_heure$datetime)
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_q1_par_heure <- subset(donnees_q1_par_heure, datetime %in% datetime_donnees)
+colnames(donnees_q1_par_heure)=c("datetime","glucose_q1")
+
+#Mise en forme des données q3
+donnees_q3_par_heure=donnees_q3_par_heure%>%filter(!is.na(datetime))
+datetime_donnees <- as.character(donnees_q3_par_heure$datetime)
+datetime_part <- as.character(grouped_data_participant_median_par_heure$datetime)
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_q3_par_heure <- subset(donnees_q3_par_heure, datetime %in% datetime_donnees)
+colnames(donnees_q3_par_heure)=c("datetime","glucose_q3")
+```
+
+#Création dataframe final pour tracer le graphique avec les données médianes générales, données q1, données q3 et données du participant médian
+```{r message=FALSE, warning=FALSE}
+data_f_heure=mutate(grouped_data_participant_median_par_heure,donnees_medianes_par_h,donnees_q1_par_heure,donnees_q3_par_heure)
+```
+
+#Graphique médiane et quantiles du glucose par heure avant, pendant et après la course 100km
+```{r message=FALSE, warning=FALSE}
+ggplot(data_f_heure, aes(x = datetime, y = glucose_mediane_general)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = glucose_q1, ymax = glucose_q3), alpha = 0.3, fill = "lightgreen") +
+  labs(title = "Médiane et quantiles du glucose par heure avant, pendant et après la course 100km",
+       x = "Date et Heure",
+       y = "Médiane du glucose") +
+  theme_minimal() +
+  geom_line(aes(x = datetime, y = median_glucose), color = "darkblue", linetype = "dotted") + 
+  scale_x_datetime(labels = scales::date_format("%d/%m/%Y %H:%M:%S"), breaks = "1 day") +
+  theme(axis.text.x = element_text(angle = 90,size=7, hjust = 1)) + 
+  geom_vline(xintercept = as.POSIXct("2023-07-22 07:00:00"), linetype = "dashed", color = "red") +
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "red") +
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-19 07:00:00"), y = 170, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = as.POSIXct("2023-07-22 20:00:00"), y = 170, label = "Pendant la course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = as.POSIXct("2023-07-24 07:00:00"), y = 170, label = "Après la course", vjust = 1, hjust = -0.5, color = "black")+
+  annotate("text", x = as.POSIXct("2023-07-24 07:00:00"), y = 80, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")+annotate("text", x = as.POSIXct("2023-07-13 07:00:00"), y = 130, label = "Participant", vjust = 1, hjust = -0.5, color = "darkblue")
+```
+################################################################
+# Pendant la course
+#Filtrer données de glycémie de la course entre début et fin de la course 
+```{r}
+filtered_data_100km_course <- data_100km %>%
+  filter(datetime >= as.POSIXct("2023-07-22 07:00:00") & datetime <= as.POSIXct("2023-07-23 10:58:26"))
+```
+
+##Par heure
+#Mediane 
+```{r}
+#Grouper les données par heure et garder la valeur médiane pour chaque heure
+donnees_medianes_course_par_heure <- filtered_data_100km_course %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00"))) %>%
+  summarise(Median_Glucose = median(glucose))
+
+```
+
+#Trouver le participant median
+```{r message=FALSE, warning=FALSE}
+#Calculer la médiane pour chaque heure pour chaque participant
+donnees_medianes_par_h_participant <- filtered_data_100km_course %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00")), numero_participant) %>%
+  summarise(Median_Glucose = median(glucose))
+
+#Calculer le score pour chaque participant en comparant avec la médiane heure par heure
+score=c()
+numero=c()
+for(i in 1:36){
+  data_transitoire=donnees_medianes_par_h_participant%>%filter(numero_participant==i)
+  if(dim(data_transitoire)[1]!=0){
+    numero=c(numero,unique(data_transitoire$numero_participant))
+    score=c(score,mean(abs(data_transitoire$Median_Glucose - donnees_medianes_course_par_heure$Median_Glucose)))
+  }
+}
+
+#Data frame numero de participant - score 
+df_med_h=data.frame(numero,score)
+num_part_course_heure=df_med_h%>%filter(score==min(score))%>%select(numero)
+
+#Filtrer le data avec le participant qui a le meilleur score (ici 31)
+data_graph_med_heure_course=filtered_data_100km_course%>%filter(numero_participant==31)
+```
+
+#Quantile 0.25
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par heure et garder le quantile 0.25 pour chaque heure 
+donnees_q1_course_par_heure<- filtered_data_100km_course %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00")))%>%
+  summarise(q1_glucose = quantile(glucose, 0.25))
+```
+
+#Quantile 0.75
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par heure et garder le quantile 0.75 pour chaque heure
+donnees_q3_course_par_heure <- filtered_data_100km_course %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00"))) %>%
+  summarise(q3_glucose = quantile(glucose, 0.75))
+```
+
+#Creation dataframe participant median
+```{r message=FALSE, warning=FALSE}
+grouped_data_participant_median_course_heure<- data_graph_med_heure_course %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:00:00"))) %>%
+  summarize(median_glucose = median(glucose))
+grouped_data_participant_median_course_heure=grouped_data_participant_median_course_heure%>%filter(!is.na(datetime))
+
+```
+
+#Mise en forme données 
+```{r}
+#Mise en forme des données médianes globale
+donnees_medianes_course_par_heure=donnees_medianes_course_par_heure%>%filter(!is.na(datetime))
+datetime_donnees <- as.character(donnees_medianes_course_par_heure$datetime)
+datetime_part <- as.character(grouped_data_participant_median_course_heure$datetime)
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_medianes_course_par_heure <- subset(donnees_medianes_course_par_heure, datetime %in% datetime_donnees)
+colnames(donnees_medianes_course_par_heure)=c("datetime","glucose_mediane_general")
+
+#Mise en forme des données q1
+donnees_q1_course_par_heure=donnees_q1_course_par_heure%>%filter(!is.na(datetime))
+datetime_donnees <- as.character(donnees_q1_course_par_heure$datetime)
+datetime_part <- as.character(grouped_data_participant_median_course_heure$datetime)
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_q1_course_par_heure <- subset(donnees_q1_course_par_heure, datetime %in% datetime_donnees)
+colnames(donnees_q1_course_par_heure)=c("datetime","glucose_q1")
+
+#Mise en forme des données q3
+donnees_q3_course_par_heure=donnees_q3_course_par_heure%>%filter(!is.na(datetime))
+datetime_donnees <- as.character(donnees_q3_course_par_heure$datetime)
+datetime_part <- as.character(grouped_data_participant_median_course_heure$datetime)
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_q3_course_par_heure <- subset(donnees_q3_course_par_heure, datetime %in% datetime_donnees)
+colnames(donnees_q3_course_par_heure)=c("datetime","glucose_q3")
+```
+
+#Création dataframe final pour tracer le graphique avec les données médianes générales, données q1, données q3 et données du participant médian
+```{r message=FALSE, warning=FALSE}
+data_f_day=mutate(grouped_data_participant_median_course_heure,donnees_medianes_course_par_heure,donnees_q1_course_par_heure,donnees_q3_course_par_heure)
+```
+
+#Graphique médiane et quantiles du glucose par heure pendant la course 100 km
+```{r message=FALSE, warning=FALSE}
+ggplot(data_f_day, aes(x = datetime, y = glucose_mediane_general)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = glucose_q1, ymax = glucose_q3), alpha = 0.3, fill = "lightgreen") +
+  labs(title = "Médiane et quantiles du glucose par heure pendant la course 100 km",
+       x = "Date et Heure",
+       y = "Médiane du glucose") +
+  theme_minimal() +
+  geom_line(aes(x = datetime, y = median_glucose), color = "darkblue", linetype = "dotted") +
+  theme(axis.text.x = element_text(angle = 90,size=7, hjust = 1))+
+  annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 105, label = "Participant", vjust = 1, hjust = -0.5, color = "darkblue")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 07:00:00"), y = 90, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+########################################
+##Par minutes pendant la course
+#Création dataframe
+```{r}
+#Grouper les données par minute et garder la valeur médiane/q1 et q3 pour chaque minute
+grouped_data_100km <- filtered_data_100km_course %>%
+  group_by(datetime = as.POSIXct(format(datetime, "%Y-%m-%d %H:%M:00"))) %>%
+  summarize(median_glucose = median(glucose),
+            q1_glucose = quantile(glucose, 0.25),
+            q3_glucose = quantile(glucose, 0.75))
+```
+
+#Graphique médiane et quantiles du glucose par minutes pendant la course 100 km
+```{r message=FALSE, warning=FALSE}
+ggplot(grouped_data_100km, aes(x = datetime, y = median_glucose)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = q1_glucose, ymax = q3_glucose), alpha = 0.4, fill = "lightgreen") +
+  labs(title = "Médiane et quantiles du glucose par minutes pendant la course 100 km",
+       x = "Date et Heure",
+       y = "Médiane du glucose") +
+  theme_minimal()+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E") 
+```
+
+##Graphique de la glycémie des coureurs pendant la course 
+#Abandons
+#Coureur 37
+```{r message=FALSE, warning=FALSE}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==37)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:19:44"))
+
+# Graphique
+part_37=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 37 (abandon)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E") 
+
+```
+#Coureur 4
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==4)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 23:22:54"))
+
+# Graphique
+part_4=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 4 (abandon)",
+       x = "Heure",
+       y = "Glucose") +
+ ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")  
+```
+#Coureur 23
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==23)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 18:53:13"))
+
+# Graphique
+part_23=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 23 (abandon)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E") 
+```
+
+```{r}
+part_37
+part_4
+part_23
+```
+#Finisher
+#Coureur 13
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==13)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 00:43:27"))
+
+# Graphique
+part_13=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 13 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E") 
+```
+#Coureur 29
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==29)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:02:54"))
+
+# Graphique
+part_29=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 29 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+ ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E") 
+```
+
+#Coureur 18
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==18)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:25:12"))
+
+# Graphique
+part_18=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 18 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 6
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==6)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:44:32"))
+
+# Graphique
+part_6=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 6 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 19
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==19)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:55:15"))
+
+# Graphique
+part_19=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 19 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+ annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 12:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+#Coureur 11
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==11)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 03:33:29"))
+
+# Graphique
+part_11=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 11 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 38
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==38)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 04:15:11"))
+
+# Graphique
+part_38=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 38 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 32
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==32)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 04:47:34"))
+
+# Graphique
+part_32=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 32 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 21
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==21)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:01:01"))
+
+# Graphique
+part_21=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 21 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 31
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==31)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:20:55"))
+
+# Graphique
+part_31=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 31 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+#Coureur 10
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==10)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:41:28"))
+
+# Graphique
+part_10=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 10 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+ ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+#Coureur 26
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==26)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 09:14:12"))
+
+# Graphique
+part_26=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 26 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E") 
+```
+
+#Coureur 27
+```{r}
+#Filtrer données en fonction heure début et fin du participant
+grouped_data_100km <- filtered_data_100km_course %>% filter(numero_participant==27)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 10:58:26"))
+
+# Graphique
+part_27=ggplot(grouped_data_100km, aes(x = datetime, y = glucose)) +
+  geom_line() +
+  labs(title = "Glucose par minutes pour le participant 27 (finisher)",
+       x = "Heure",
+       y = "Glucose") +
+  ylim(50,205)+
+  theme_minimal()+geom_hline(yintercept = 90, linetype = "dashed", color = "orange") +
+  geom_hline(yintercept = 140, linetype = "dashed", color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-23 10:58:26"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+    annotate("text", x = as.POSIXct("2023-07-22 07:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "white")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 70, label = "Hypoglycémie", vjust = 1, hjust = 1, color = "orange")+
+  annotate("text", x = as.POSIXct("2023-07-22 16:00:00"), y = 180, label = "Hyperglycémie", vjust = 1, hjust = 1, color = "orange")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 00:43:27"), linetype = "dashed", color = "#F9429E")+
+  geom_vline(xintercept = as.POSIXct("2023-07-23 10:58:26"), linetype = "dashed", color = "#F9429E")+
+  annotate("text", x = as.POSIXct("2023-07-23 05:00:00"), y = 70, label = "Zone arrivée", vjust = 1, hjust = 1, color = "#F9429E")
+```
+
+```{r}
+part_13
+part_29
+part_18
+part_6
+part_19
+part_11
+part_38
+part_32
+part_21
+part_31
+part_10
+part_26
+part_27
+```
+#################################################################################
+#Graphique par km
+#Importation des données
+```{r}
+# Importation des données
+data_100km_complet<- read.csv2("data_100V1.csv")
+
+#Suppression des na
+data_100km_complet=data_100km_complet%>%filter(!is.na(moy_glucose))
+```
+
+#Mediane
+```{r}
+#Grouper les données par km et garder la valeur médiane
+donnees_medianes_par_km <- data_100km_complet %>% select(km,numero_participant,moy_glucose)%>%
+  group_by(km) %>%
+  summarise(Median_Glucose = median(moy_glucose))
+```
+
+#Trouver le participant median
+```{r message=FALSE, warning=FALSE}
+# Calculer la médiane pour chaque date pour chaque participant
+donnees_medianes_par_km_participant <- data_100km_complet %>%
+  group_by(km, numero_participant) %>%
+  summarise(Median_Glucose = median(moy_glucose))
+
+#Calculer le score pour chaque participant en comparant avec la médiane km par km
+score=c()
+numero=c()
+for(i in 1:36){
+  data_transitoire=donnees_medianes_par_km_participant%>%filter(numero_participant==i)
+  if(dim(data_transitoire)[1]!=0){
+    numero=c(numero,unique(data_transitoire$numero_participant))
+    score=c(score,mean(abs(data_transitoire$Median_Glucose - donnees_medianes_par_km$Median_Glucose)))
+  }
+}
+
+#Data frame numero de participant - score 
+df_med=data.frame(numero,score)
+num_part_med_km=df_med%>%filter(score==min(score))%>%select(numero)
+
+#Filtrer le data avec le participant qui a le meilleur score (ici 6)
+data_graph_med_par_km=data_100km_complet%>%filter(numero_participant==6)
+```
+
+#Creation dataframe participant median
+```{r message=FALSE, warning=FALSE}
+grouped_data_participant_median_par_km<- data_graph_med_par_km %>%
+  group_by(km) %>%
+  summarize(median_glucose = median(moy_glucose))
+```
+
+#Quantile 0.25
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par km et garder le quantile 0.25 pour chaque date 
+donnees_q1_par_km<- data_100km_complet %>%
+  group_by(km) %>%
+  summarise(q1_glucose = quantile(moy_glucose, 0.25))
+```
+
+#Quantile 0.75
+```{r message=FALSE, warning=FALSE}
+#Grouper les données par km et garder le quantile 0.75 pour chaque date 
+donnees_q3_par_km <- data_100km_complet %>%
+  group_by(km) %>%
+  summarise(q3_glucose = quantile(moy_glucose, 0.75))
+```
+
+#mise en forme des données
+```{r}
+#Mise en forme des données médianes globale
+datetime_donnees <- donnees_medianes_par_km$km
+datetime_part <- grouped_data_participant_median_par_km$km
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_medianes_par_km <- subset(donnees_medianes_par_km, km %in% datetime_donnees)
+colnames(donnees_medianes_par_km)=c("km","glucose_mediane_general")
+
+#Mise en forme des données q1
+datetime_donnees <- donnees_q1_par_km$km
+datetime_part <- grouped_data_participant_median_par_km$km
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_q1_par_km <- subset(donnees_q1_par_km, km %in% datetime_donnees)
+colnames(donnees_q1_par_km)=c("km","glucose_q1")
+
+#Mise en forme des données q3
+datetime_donnees <- donnees_q3_par_km$km
+datetime_part <- grouped_data_participant_median_par_km$km
+valeurs_absentes <- setdiff(datetime_donnees, datetime_part)
+datetime_donnees <- datetime_donnees[datetime_donnees %in% datetime_part]
+donnees_q3_par_km <- subset(donnees_q3_par_km, km %in% datetime_donnees)
+colnames(donnees_q3_par_km)=c("km","glucose_q3")
+```
+
+#Création dataframe final pour tracer le graphique avec les données médianes générales, données q1, données q3 et données du participant médian
+```{r}
+data_f_km=mutate(grouped_data_participant_median_par_km,donnees_medianes_par_km,donnees_q1_par_km,donnees_q3_par_km)
+```
+
+#Graphique
+```{r message=FALSE, warning=FALSE}
+ggplot(data_f_km, aes(x = km, y = glucose_mediane_general)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = glucose_q1, ymax = glucose_q3), alpha = 0.3, fill = "lightgreen") +
+  labs(title = "Médiane et quantiles du glucose par km pendant la course 100km",
+       x = "Km",
+       y = "Médiane du glucose") +
+  theme_minimal() +
+  geom_line(aes(x = km, y = median_glucose), color = "darkblue", linetype = "dashed") +annotate("text", x = 2, y = 150, label = "Participant", vjust = 1, hjust = -0.5, color = "darkblue")
+```

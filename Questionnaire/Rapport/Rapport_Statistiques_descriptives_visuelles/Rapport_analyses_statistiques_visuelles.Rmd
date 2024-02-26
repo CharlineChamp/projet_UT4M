@@ -1,0 +1,991 @@
+---
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document:
+    fig_caption: true
+    includes:
+      in_header: header.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE, message = FALSE)
+```
+
+```{r packages, include=FALSE}
+library(readr)
+library(ggplot2)
+library(forcats)
+library(dplyr)
+library(stringr)
+library(readxl)
+library(RColorBrewer)
+library(doBy)
+```
+
+\newpage
+\tableofcontents
+\newpage
+ 
+## Chargement des données
+```{r echo=FALSE,include=FALSE} 
+data=read_excel("../../Donnée/dataset_V6.xlsx", sheet="Avec NA")
+```
+
+```{r echo=FALSE,include=FALSE} 
+# Fonction pour spliter les colonnes de choix mulitples
+choix_multiples = function(data, choix, nom_colonne, colonne){
+  matrice = matrix(nrow = dim(data)[1],ncol = length(choix))
+  df = as.data.frame(matrice)
+  for (j in 1 :length(choix)){
+    vecteur = c()
+    for (i in 1 : length(colonne)){
+      if(is.na(colonne[i])==FALSE){
+        if(str_detect(colonne[i],choix[j])==TRUE){
+          vecteur = c(vecteur,0)
+        }
+        else{ vecteur = c(vecteur,1)}
+      }
+      else{vecteur = c(vecteur,1)}
+    }
+    df[j]=vecteur
+  }
+  colnames(df) = nom_colonne
+  return(df)
+}
+```
+
+```{r}
+# Fonction pour créer les graphiques des questions à choix unique
+textual_unique_choice_plot <- function(column,ordered_levels,new_levels,colors,x_legend){
+  column <- as.factor(column)
+  column <- ordered(column, levels = ordered_levels)
+  df <- data.frame(column)
+  
+  plot <- ggplot(df, aes(x=column)) + 
+    geom_bar(aes(fill = column)) +
+    labs(x = x_legend, y = "Nombre d'observations") +
+    scale_fill_manual(values = colors) +
+    scale_x_discrete(breaks=c(levels(column),NA),labels = str_wrap(c(new_levels,"Non renseigné"), width = 15)) +
+    theme_bw() +
+    theme(legend.position='none',
+          axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20),
+          axis.title.x = element_text(size = 20),
+          axis.title.y = element_text(size = 20))
+  return(plot)
+}
+```
+
+```{r}
+# Fonction pour créer les graphiques des questions à choix multiples
+textual_multiple_choices_plot <- function(data,vec_choix,vec_nom_colonne,colonne,x_legend,angle,hjust){
+  df = choix_multiples(data,vec_choix,vec_nom_colonne,colonne)
+  df = data.frame(dim(df)[1] - colSums(df))
+  colnames(df) <- c("nombre")
+  df = data.frame(nom = vec_choix,nombre = df$nombre)
+  
+  plot <- ggplot(df, aes(x=nom,y=nombre)) + 
+    geom_bar(aes(fill = nom),stat = "identity") +
+    labs(x = x_legend, y = "Nombre d'observations") +
+    theme_bw() +
+    theme(legend.position='none',
+          axis.text.x = element_text(size = 20,angle = angle,hjust = hjust),
+          axis.text.y = element_text(size = 20),
+          axis.title.x = element_text(size = 20),
+          axis.title.y = element_text(size = 20))
+  
+  return(plot)
+}
+```
+
+# Caractéristiques individuelles 
+
+## Sexe
+
+```{r sex, fig.cap = "Représentation de la répartition homme/femme", out.width='65%', fig.align='center'}
+ggplot(data, aes(x=sex)) + 
+  geom_bar(aes(fill = sex)) +
+  labs(x = "Sexe", y = "Nombre d'observations") +
+  scale_fill_manual(values = c("pink", "lightblue")) +
+  theme_bw() +
+  theme(legend.position='none',
+        axis.text.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20))
+```
+
+Nous observons qu'une majorité d'hommes a répondu à ce questionnaire. Environ 4/5 des volontaires sont de sexe masculin.
+
+## Age
+
+```{r age, fig.cap = "Représentation de la répartition par age", out.width='65%', fig.align='center'}
+ggplot(data, aes(x=age)) + 
+  geom_histogram(binwidth=2.5, alpha=0.6) +
+  labs(x = "Age", y = "Nombre d'observations") +
+  theme_bw() +
+  theme(legend.position='none')
+```
+
+Nous observons qu'une majorité des répondants à ce questionnaire font partie de la tranche d'âge 25 à 40 ans. Nous remarquons également que peu de personnes de moins de 25 ans et de plus de 50 ans ont répondu. En ce qui concerne les personnes âgés de 40 à 50 ans, la répartition est plutôt homogène.
+
+## Poids
+
+```{r weight, fig.cap = "Représentation de la répartition par poids", out.width='65%', fig.align='center'}
+ggplot(data, aes(x=weight)) + 
+  geom_histogram(binwidth=5, alpha=0.6) +
+  labs(x = "Poids", y = "Nombre d'observations") +
+  theme_bw() +
+  theme(legend.position='none')
+```
+
+Nous observons une majorité de participants pesant entre 60 et 80 kg. Nous remarquons également peu d'extrêmes.
+
+## Poids maximal
+
+```{r max_weight, fig.cap = "Représentation de la répartition par poids le plus haut", out.width='65%', fig.align='center'}
+ggplot(data, aes(x=max_weight)) + 
+  geom_histogram(binwidth=5, alpha=0.6) +
+  labs(x = "Poids le plus haut", y = "Nombre d'observations") +
+  theme_bw() +
+  theme(legend.position='none')
+```
+
+Le poids maximal est lui aussi majoritairement compris entre 60 et 80 kg. Là aussi, nous observons très peu d'extrêmes.
+
+## Poids minimal
+
+```{r min_weight, fig.cap = "Représentation de la répartition par poids le plus bas", out.width='65%', fig.align='center'}
+ggplot(data, aes(x=min_weight)) + 
+  geom_histogram(binwidth=5, alpha=0.6) +
+  labs(x = "Poids le plus bas", y = "Nombre d'observations") +
+  theme_bw() +
+  theme(legend.position='none')
+```
+
+Le poids minimal est, quant à lui, majoritairement compris entre 60 et 75 kg. Là encore, nous observons très peu d'extrêmes.
+
+## Temps consacré à la profession
+
+```{r weekly_volume_profession, fig.cap = "Quel volume hebdomadaire est consacré à votre profession ?", out.width='65%', fig.align='center'}
+column = data$weekly_volume_profession
+ordered_levels <- c("⩽ 35 heures / semaine" ,"entre 36 et 45 heures / semaine","⩾ 45h / semaine")
+new_levels <- c("< ou = 35h", "entre 36h et 45h","> ou = 45h")
+colors <- c("lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Volume horaire hebdomadaire consacré à la profession"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+Nous observons que la majorité des traileurs ayant répondu à ce questionnaire consacrent entre 36 et 45h à leur profession.
+
+\newpage
+
+# Caractéristiques sportives
+
+## Début de la pratique du trail
+
+```{r start_trail, fig.cap = "Depuis combien de temps pratiquez-vous le trail ?", out.width='65%', fig.align='center'}
+column = data$start_trail
+ordered_levels <- c("< 2 ans","Entre 2 et 5 ans","Entre 5 et 10 ans","> 10 ans")
+new_levels <- c("< 2 ans", "Entre 2 et 5 ans","Entre 5 et 10 ans","> 10 ans")
+colors <- c("seagreen1","lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Durée de pratique du trail"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+L'expérience de la pratique du trail des répondants est plutôt bien répartie, avec une majorité de personnes le pratiquant depuis 2 à 5 ans.
+
+\newpage
+
+## Autres pratiques sportives
+
+```{r other_practice, fig.cap = "Quelle.s autre.s discipline.s pratiquez-vous en plus de la course à pied / trail ?", out.width='65%', fig.align='center'}
+vec_choix = c("Cyclisme / Vtt","Natation","Ski de fond / Skating","Ski de randonnée",
+              "Préparation physique Générale","Aucune","Autres")
+vec_nom_colonne = c("cycling_mountain_biking","swimming","cross-country_skiing_skating","ski_touring",
+                    "general_physical_preparation","no_other_practice","other_other_practice")
+colonne = data$other_practice
+x_legend = "Autres pratiques"
+angle = 45
+hjust = 1
+textual_multiple_choices_plot(data,vec_choix,vec_nom_colonne,colonne,x_legend,angle,hjust)
+```
+
+On remarque que la grande majorité des participants est multi-disciplinaire. Beaucoup pratiquent également le cyclisme et la préparation physique générale.
+
+## Temps consacré aux autres pratiques sportives
+
+```{r time_proportion_other_practice, fig.cap = "Quelle est la proportion de ces autres disciplines dans votre volume total d'entraînement ?", out.width='65%', fig.align='center'}
+column = data$time_proportion_other_practice
+ordered_levels <- c("< 20%","Entre 20% et 50%","> 50%")
+new_levels <- c("< 20%","Entre 20% et 50%","> 50%")
+colors <- c("lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Proportion autres disciplines"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+On note que peu de traileurs allouent une partie importante de leur temps aux autres disciplines, avec une majorité d'entre eux leur consacrant moins de 20% du temps.
+
+## Coach de trail
+```{r echo=FALSE}
+data$coach_for_trail = as.factor(data$coach_for_trail)
+
+ggplot(data = data, aes(coach_for_trail, fill = coach_for_trail))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Êtes-vous suivi par un coach dans votre préparation à vos objectifs de trail ?",x = "Présence d'un coach")+
+  scale_fill_manual (values = c("indianred1", "seagreen1"), name = "Présence d'un coach", labels = c("Non", "Oui", "Non renseigné")) + 
+  scale_x_discrete(labels = c("Non", "Oui", "Non renseigné")) + theme(legend.position = "none")
+```
+On remarque que la plupart des coureurs ont répondus à cette question. Une grande majorité d'entre eux ne sont pas suivis par un coach dans leur préparation. 
+
+## Cardiofréquencemètre à l'entraînement
+
+```{r echo=FALSE}
+data$heart_rate_monitor_train = as.factor(data$heart_rate_monitor_train)
+
+ggplot(data = data, aes(heart_rate_monitor_train, fill = heart_rate_monitor_train))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Utilisez-vous un cardiofréquencemètre à l'entraînement ?",x = "Utilisation d'un cardiofréquencemètre")+
+  scale_fill_manual (values = c("indianred1", "seagreen1"), name = "Utilisation d'un cardiofréquencemètre", labels = c("Non", "Oui", "Non renseigné")) + 
+  scale_x_discrete(labels = c("Non", "Oui", "Non renseigné")) + theme(legend.position = "none")
+```
+
+Pour cette question, presque tous les coureurs ont répondus. Beaucoup d'entre eux utilisent un cardiofréquencemètre à l'entraînement, environ 1/3 n'en utilisent pas.
+
+## Cardiofréquencemètre en compétition
+
+```{r echo=FALSE}
+data$heart_rate_monitor_competition = as.factor(data$heart_rate_monitor_competition)
+
+ggplot(data = data, aes(heart_rate_monitor_competition, fill = heart_rate_monitor_competition))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Utilisez-vous un cardiofréquencemètre en compétition ?",x = "Utilisation d'un cardiofréquencemètre")+
+  scale_fill_manual (values = c("indianred1", "seagreen1"), name = "Utilisation d'un cardiofréquencemètre", labels = c("Non", "Oui", "Non renseigné")) + 
+  scale_x_discrete(labels = c("Non", "Oui", "Non renseigné")) + theme(legend.position = "none")
+```
+Ici encore, il y a très peu de données manquantes. Presque autant de coureurs utilisent et n'utilisent pas de cardiofréquencemètre en compétition. La proportion de coureurs qui n'en utilise pas est d'environ 3/7e.
+
+## Enregistrement des performances sur une plateforme connectée
+
+```{r echo=FALSE}
+data$connected_platform = as.factor(data$connected_platform)
+
+ggplot(data = data, aes(connected_platform, fill = connected_platform))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Téléchargez-vous vos données d'entraînement sur une plateforme connectée ?",x = "Téléchargement des données d'entraînement")+
+  scale_fill_manual (values = c("indianred1", "seagreen1"), name = "Téléchargement des données d'entraînement", labels = c("Non", "Oui", "Non renseigné")) + 
+  scale_x_discrete(labels = c("Non", "Oui", "Non renseigné")) + theme(legend.position = "none")
+```
+
+Il y a très peu de données manquantes pour cette question. Beaucoup de coureurs utilisent une plateforme pour télécharger leurs données d'entraînement, environ 6/7e.
+
+## Connaissance de la côte ITRA
+
+```{r echo=FALSE}
+data$ITRA_rating_know = as.factor(data$ITRA_rating_know)
+
+ggplot(data = data, aes(ITRA_rating_know, fill = ITRA_rating_know))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Connaissez-vous votre côte ITRA ?",x = "Connaissance de la côte ITRA")+
+  scale_fill_manual (values = c("indianred1", "seagreen1"), name = "Connaissance de la côte ITRA", labels = c("Non", "Oui", "Non renseigné")) + 
+  scale_x_discrete(labels = c("Non", "Oui", "Non renseigné")) + theme(legend.position = "none")
+```
+Encore ici, il y a peu de données manquantes, 3/7 des répondants ne connaissent pas leur côte ITRA.
+
+## Côte ITRA
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(ITRA_rating, fill = ITRA_rating))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Veuillez-indiquer cotre côte ITRA ?",x = "Côte ITRA")
+```
+
+On remarque que les côtes ITRA des participants sont majoritairement entre 400 et 600.
+
+## Nombre d'heures de pratiques de trail pendant la préparation d'une course
+
+```{r echo=FALSE}
+data$number_hours_practice_trail_phase_preparation = as.factor(data$number_hours_practice_trail_phase_preparation)
+data$number_hours_practice_trail_phase_preparation = factor(data$number_hours_practice_trail_phase_preparation,levels=c(
+  '⩽ 3 heures / semaine','Entre 3h et 7h / semaine','Entre 7h et 12h / semaine','> 12 heures / semaine'))
+
+ggplot(data = data, aes(number_hours_practice_trail_phase_preparation, fill = number_hours_practice_trail_phase_preparation))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Lors de votre phase de préparation à une course similaire à celle choisie pour l'UT4M 2023, \n en moyenne combien d'heures par semaine pratiquez-vous du trail ?",x = "Nombre d'heures par semaine")+
+  scale_fill_manual (values = c("seagreen1", "gold", "sandybrown", "indianred1", "grey"), name = "Nombre d'heures par semaine", labels = c('⩽ 3 heures / semaine','Entre 3h et 7h / semaine','Entre 7h et 12h / semaine','> 12 heures / semaine', "Non renseigné")) + 
+  scale_x_discrete(labels = c('< ou = à 3 heures','Entre 3h et 7h','Entre 7h et 12h','> 12 heures', "Non renseigné")) + theme(legend.position = "none")
+```
+On retrouve peu de données manquantes pour cette question. La majorité des coureurs s'entraine entre 3 et 7h par semaine et une autre partie importante entre 7 et 12h. Il y a très peu de coureurs qui s'entraînent plus de 12h.
+
+## Dénivelé effectué pendant la préparation d'une course
+
+```{r echo=FALSE}
+data$drop_practice_trail_phase_preparation = as.factor(data$drop_practice_trail_phase_preparation)
+data$drop_practice_trail_phase_preparation = factor(data$drop_practice_trail_phase_preparation,levels=c('< 1000m / semaine','Entre 1000m et 2000m / semaine', '> 2000m / semaine'))
+
+ggplot(data = data, aes(drop_practice_trail_phase_preparation, fill = drop_practice_trail_phase_preparation))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Lors de votre phase de préparation à une course similaire à celle choisie pour l'UT4M 2023, \n en moyenne combien de dénivelé effectuez-vous par semaine en trail ?",x = "Dénivelé par semaine")+
+  scale_fill_manual (values = c("seagreen1", "sandybrown", "indianred1", "grey"), name = "Dénivelé par semaine", labels = c('< 1000m / semaine','Entre 1000m et 2000m / semaine', '> 2000m / semaine', "Non renseigné")) + 
+  scale_x_discrete(labels = c('< 1000m','Entre 1000m et 2000m', '> 2000m', "Non renseigné")) + theme(legend.position = "none")
+```
+Il y a peu de données manquantes pour cette question. Le dénivelé effectué par les coureurs par semaine est réparti de façon relativement homogène avec tout de même une majorité qui effectue entre 1000 et 2000m de dénivelé par semaine.
+
+## Nombre de kilomètre parcourus pendant la préparation d'une course
+
+```{r echo=FALSE}
+data$kilometres_practice_trail_phase_preparation = as.factor(data$kilometres_practice_trail_phase_preparation)
+data$kilometres_practice_trail_phase_preparation = factor(data$kilometres_practice_trail_phase_preparation,levels=c(
+  '< 20km / semaine','Entre 20km et 50km / semaine','Entre 50km et 80km / semaine','> 80km / semaine'))
+
+ggplot(data = data, aes(number_hours_practice_trail_phase_preparation, fill = number_hours_practice_trail_phase_preparation))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Lors de votre phase de préparation à une course similaire à celle choisie pour l'UT4M 2023, \n en moyenne combien de kilomètres effectuez-vous en trail par semaine ?",x = "Nombre de kilomètres par semaine")+
+  scale_fill_manual (values = c("seagreen1", "gold", "sandybrown", "indianred1", "grey"), name = "Nombre de kilomètres par semaine", labels = c('< 20km / semaine','Entre 20km et 50km / semaine','Entre 50km et 80km / semaine','> 80km / semaine', "Non renseigné")) + 
+  scale_x_discrete(labels = c('< 20km','Entre 20km et 50km','Entre 50km et 80km','> 80km', "Non renseigné")) + theme(legend.position = "none")
+```
+On retrouve peu de données manquantes pour cette question. La majorité des coureurs parcourt entre 20 et 50km par semaine et une autre partie importante entre 50 et 80km. Il y a très peu de coureurs qui effectuent plus de 80km.
+
+## Nombre d'heures de pratiques sportives pendant la préparation d'une course
+
+```{r echo=FALSE}
+data$number_hours_training_trail_phase_preparation = as.factor(data$number_hours_training_trail_phase_preparation)
+data$number_hours_training_trail_phase_preparation = factor(data$number_hours_training_trail_phase_preparation,levels=c(
+  '⩽ 3 heures / semaine','Entre 3h et 7h / semaine','Entre 7h et 12h / semaine','> 12 heures / semaine'))
+
+ggplot(data = data, aes(number_hours_training_trail_phase_preparation, fill = number_hours_training_trail_phase_preparation))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Lors de votre phase de préparation à une course similaire à celle choisie pour l'UT4M 2023, \n en moyenne combien d'heures d'entraînement avez-vous par semaine ?",x = "Nombre d'heures par semaine")+
+  scale_fill_manual (values = c("seagreen1", "gold", "sandybrown", "indianred1", "grey"), name = "Nombre d'heures par semaine", labels = c('⩽ 3 heures / semaine','Entre 3h et 7h / semaine','Entre 7h et 12h / semaine','> 12 heures / semaine', "Non renseigné")) + 
+  scale_x_discrete(labels = c('< ou = à 3 heures','Entre 3h et 7h','Entre 7h et 12h','> 12 heures', "Non renseigné")) + theme(legend.position = "none")
+```
+Les coureurs effectuent principalement entre 3 et 12h de sport par semaine pour s'entraîner. Très peu d'entre eux font moins de 3h ou plus de 12h de sport.
+
+## Participation à des trails lors des deux dernières saisons  
+```{r echo=FALSE}
+data$trail_participation_last_two_seasons=ifelse(data$trail_participation_last_two_seasons=="Oui",0,1)
+data$trail_participation_last_two_seasons=as.factor(data$trail_participation_last_two_seasons)
+ggplot(data, aes(x=trail_participation_last_two_seasons, fill=trail_participation_last_two_seasons))+
+  theme_bw()+geom_bar() +
+  labs(title="Avez-vous participé à une ou plusieurs courses de trail lors des deux dernières saisons ? ",x = "Participation",
+  y = "Nombre d'observations")+
+  scale_fill_manual(values=c("seagreen1","indianred1"))+scale_x_discrete(breaks=c(0,1,NA),labels=c("Oui","Non","Non renseigné"))+ theme(legend.position = "none")
+```
+La majorité a participé à une ou plusieurs courses de trail lors des deux dernières saisons. 
+
+## Distance des trails réalisés lors des deux dernières saisons  
+```{r echo=FALSE}
+data$distance_trail_participation_last_two_seasons=as.factor(data$distance_trail_participation_last_two_seasons)
+data$distance_trail_participation_last_two_seasons=fct_relevel(data$distance_trail_participation_last_two_seasons, c("< 40km", "De 40km à 80km", "> 80km"))
+ggplot(data, aes(x=distance_trail_participation_last_two_seasons, fill=distance_trail_participation_last_two_seasons))+
+  theme_bw()+geom_bar() +
+  labs( title="Quelle.s distance.s avez-vous couru sur des trails lors des deux dernières saisons ?",x = "Distance",
+       y = "Nombre d'observations")+
+  scale_fill_manual(values=c("gold","chocolate1","brown2", "grey"))+
+  theme(legend.position = "none",axis.text.x=element_text(angle=90,hjust=1))+scale_x_discrete(labels=c("< 40km", "De 40km à 80km", "> 80km","Non renseigné"))
+```
+Les coureurs ont participé à des trails lors des deux dernières saisons sur globalement tous types de distances. On retrouve 50 personnes qui n'ont pas répondu à la question.
+
+
+```{r echo=FALSE}
+## Nombre de trails couru par saison  
+data$frequence_trail_participation_last_two_seasons_by_season=as.factor(data$frequence_trail_participation_last_two_seasons_by_season)
+data$frequence_trail_participation_last_two_seasons_by_season=fct_relevel(data$frequence_trail_participation_last_two_seasons_by_season, c("1 à 3 courses / saison", "4 à 8 courses / saison", "> 8 courses / saison"))
+ggplot(data, aes(x=frequence_trail_participation_last_two_seasons_by_season, fill=frequence_trail_participation_last_two_seasons_by_season))+
+  theme_bw()+geom_bar() +
+  labs(title="A quelle fréquence avez-vous participé à des trails par saison ?",x = "Fréquence",                   
+       y = "Nombre d'observations")+
+  scale_fill_manual(values=c("gold","chocolate1", "brown2","grey"))+
+  theme(legend.position = "none",axis.text.x=element_text(angle=90,hjust=1))+scale_x_discrete(labels=c("1 à 3 courses / saison", "4 à 8 courses / saison", "> 8 courses / saison","Non renseigné"))
+```
+La majorité participe à moins de 3 courses par saison. Peu de personnes courent plus de 8 trails par saison.
+
+## Courses de l'UT4M   
+```{r echo=FALSE}
+vec_choix = c("Un des 20km","Un des 40km","80km Challenge","100km Master","160km Xtrem / 160km Challenge")
+vec_nom_colonne = c("race_20","race_40", "race_80", "race_100", "race_160")
+colonne = data$which_races_UT4M_2023
+
+df = choix_multiples(data, vec_choix,vec_nom_colonne,colonne)
+data = cbind(data,df)
+
+df_moitie=data%>%select(race_20,race_40,race_80,race_100,race_160)
+
+df_moitie=c(length(df_moitie$race_20)-sum(df_moitie$race_20),length(df_moitie$race_40)-sum(df_moitie$race_40),
+            length(df_moitie$race_80)-sum(df_moitie$race_80),length(df_moitie$race_100)-sum(df_moitie$race_100),
+            length(df_moitie$race_160)-sum(df_moitie$race_160))
+vec_choix = c("Un des 20km","Un des 40km","80km Challenge","100km Master","160km Xtrem / 160km Challenge")
+data_frame=as.data.frame(cbind(vec_choix,df_moitie))
+
+data_frame$df_moitie=as.numeric(data_frame$df_moitie)
+data_frame$vec_choix=as.factor(data_frame$vec_choix)
+data_frame$vec_choix=fct_relevel(data_frame$vec_choix, c("Un des 20km","Un des 40km","80km Challenge","100km Master","160km Xtrem / 160km Challenge"))
+
+ggplot(data_frame, aes(x=vec_choix,y=df_moitie, fill=vec_choix))+
+  theme_bw()+geom_bar(stat="identity") +
+  labs(title="Sur quelle.s course.s de l'Ut4M êtes vous inscrits en 2023 ? ", x = "Courses",
+       y = "Nombre d'observations")+
+    scale_fill_manual(values=c("gold","deepskyblue","darkorchid",
+                               "orange","brown2"))+
+  scale_x_discrete(labels = str_wrap(c(vec_choix,"Non renseigné"), width = 8)) +
+    theme(legend.position='none',
+          axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20),
+          axis.title.x = element_text(size = 20),
+          axis.title.y = element_text(size = 20))
+```
+Les participants sont majoritairement inscrits sur un des 40km et un des 160km. On retrouve tout de même pas mal d'inscriptions sur le 100km.
+
+# Régime et hydratation
+
+## Régime alimentaire    
+```{r echo=FALSE}
+data$diet=ifelse(data$diet=="Oui",0,1)
+data$diet=as.factor(data$diet)
+ggplot(data, aes(x=diet, fill=diet))+
+  theme_bw()+geom_bar() +
+  labs(title="Suivez-vous un régime alimentaire particulier?",x = "Régime alimentaire",                   
+       y = "Nombre d'observations")+
+  scale_fill_manual(values=c("seagreen1","indianred1","grey"))+scale_x_discrete(breaks=c(0,1,NA),labels=c("Oui","Non","Non renseigné"))+ theme(legend.position = "none")
+```
+La plupart des coureurs ne suivent pas de régime alimentaire spécifique.
+
+## Type de régime alimentaire suivi    
+```{r echo=FALSE}
+vec_choix = c("Régime cétogène" ,"Régime fléxitarien","Régime sans gluten","Régime sans lactose","Régime végétalien","Régime végétarien")
+vec_nom_colonne = c("regime_cetogene","regime_flexi", "regime_sans_glu", "regime_sans_lac", "regime_vegetalien","regime_vegetarien")
+colonne = data$which_diet
+
+df = choix_multiples(data, vec_choix,vec_nom_colonne,colonne)
+data = cbind(data,df)
+
+df_moitie=data%>%select(regime_cetogene,regime_flexi, regime_sans_glu, regime_sans_lac, regime_vegetalien,regime_vegetarien)
+
+df_moitie=c(length(df_moitie$regime_cetogene)-sum(df_moitie$regime_cetogene),length(df_moitie$regime_flexi)-sum(df_moitie$regime_flexi),
+            length(df_moitie$regime_sans_glu)-sum(df_moitie$regime_sans_glu),length(df_moitie$regime_sans_lac)-sum(df_moitie$regime_sans_lac),
+            length(df_moitie$regime_vegetalien)-sum(df_moitie$regime_vegetalien),length(df_moitie$regime_vegetarien)-sum(df_moitie$regime_vegetarien))
+data_frame=as.data.frame(cbind(vec_choix,df_moitie))
+
+data_frame$df_moitie=as.numeric(data_frame$df_moitie)
+data_frame$vec_choix=as.factor(data_frame$vec_choix)
+
+
+ggplot(data_frame, aes(x=vec_choix,y=df_moitie, fill=vec_choix))+
+  theme_bw()+geom_bar(stat="identity") +
+  labs(title="Quel régime alimentaire suivez vous ? ",x = "Régime alimentaire",
+       y = "Nombre d'observations")+
+  theme(legend.position = "none", axis.text.x=element_text(angle=90,hjust=1))
+```
+Parmi ceux qui suivent un régime alimentaire particulier, la majorité sont végétarien, puis vient, par la suite, les flexitariens avec 10 personnes.
+
+## Boisson pendant l'entrainement    
+```{r echo=FALSE}
+vec_choix = c("Boisson énergétique"  ,"Eau","Boisson sucrée","Je ne bois pas")
+vec_nom_colonne = c("boiss_energie_training","eau_training", "boisson_sucre_training", "je_ne_bois_pas_training")
+colonne = data$which_drink_during_training 
+
+df = choix_multiples(data, vec_choix,vec_nom_colonne,colonne)
+data = cbind(data,df)
+
+df_moitie=data%>%select(boiss_energie_training,eau_training, boisson_sucre_training, je_ne_bois_pas_training)
+
+df_moitie=c(length(df_moitie$boiss_energie_training)-sum(df_moitie$boiss_energie_training),length(df_moitie$eau_training)-sum(df_moitie$eau_training),
+            length(df_moitie$boisson_sucre_training)-sum(df_moitie$boisson_sucre_training),length(df_moitie$je_ne_bois_pas_training)-sum(df_moitie$je_ne_bois_pas_training))
+data_frame=as.data.frame(cbind(vec_choix,df_moitie))
+
+data_frame$df_moitie=as.numeric(data_frame$df_moitie)
+data_frame$vec_choix=as.factor(data_frame$vec_choix)
+
+ggplot(data_frame, aes(x=vec_choix,y=df_moitie, fill=vec_choix))+
+  theme_bw()+geom_bar(stat="identity") +
+  labs(title="Pendant l'entraînement, vous buvez ? ",x = "Type de boisson",  
+       y = "Nombre d'observations")+
+  theme(legend.position = "none", axis.text.x=element_text(angle=90,hjust=1))
+```
+Plus de 300 personnes boivent de l'eau à l'entrainement et environ 100 prennent des boissons énergétiques. Peu de personnes ne boivent pas.
+
+## Volume de boisson bu à l'entrainement    
+```{r echo=FALSE}
+data$volume_drink_during_training=as.factor(data$volume_drink_during_training)
+
+data$volume_drink_during_training=fct_relevel(data$volume_drink_during_training, c("< 250mL / heure","Entre 250mL et 500mL / heure","> 500mL / heure" ))
+
+ggplot(data, aes(x=volume_drink_during_training, fill=volume_drink_during_training))+
+  theme_bw()+geom_bar() +
+  labs(title="Pendant l'entrainement, vous buvez quel volume?" ,x = "Volume de boisson bu par heure",                   
+       y = "Nombre d'observations")+
+  scale_fill_manual(values=c("azure2","cadetblue2","cornflowerblue","grey"))+
+  theme(legend.position = "none")+scale_x_discrete(labels=c("< 250mL","Entre 250mL et 500mL","> 500mL" , "Non renseigné"))
+```
+La majorité boit entre 250 et 500ml de boisson par heure à l'entrainement.
+
+## Boisson pendant la compétition    
+```{r echo=FALSE}
+vec_choix = c("Boisson énergétique"  ,"Eau","Boisson sucrée","Je ne bois pas")
+vec_nom_colonne = c("boiss_energie_compet","eau_compet", "boisson_sucre_compet", "je_ne_bois_pas_compet")
+colonne = data$which_drink_during_competition
+
+df = choix_multiples(data, vec_choix,vec_nom_colonne,colonne)
+data = cbind(data,df)
+
+df_moitie=data%>%select(boiss_energie_compet,eau_compet, boisson_sucre_compet, je_ne_bois_pas_compet)
+
+df_moitie=c(length(df_moitie$boiss_energie_compet)-sum(df_moitie$boiss_energie_compet),length(df_moitie$eau_compet)-sum(df_moitie$eau_compet),
+            length(df_moitie$boisson_sucre_compet)-sum(df_moitie$boisson_sucre_compet),length(df_moitie$je_ne_bois_pas_compet)-sum(df_moitie$je_ne_bois_pas_compet))
+data_frame=as.data.frame(cbind(vec_choix,df_moitie))
+
+data_frame$df_moitie=as.numeric(data_frame$df_moitie)
+data_frame$vec_choix=as.factor(data_frame$vec_choix)
+
+
+ggplot(data_frame, aes(x=vec_choix,y=df_moitie, fill=vec_choix))+
+  theme_bw()+geom_bar(stat="identity") +
+  labs(title="Pendant la compétition, vous buvez ? ",x = "Type de boisson",  
+       y = "Nombre d'observations")+
+  theme(legend.position = "none", axis.text.x=element_text(angle=90,hjust=1))
+```
+Principalement, les gens boivent de l'eau et de la boisson énergétique. Quasiment aucune personne ne bois pas. 
+
+## Volume de boisson bu en compétition      
+```{r echo=FALSE}
+data$volume_drink_during_competition=as.factor(data$volume_drink_during_competition)
+
+data$volume_drink_during_competition=fct_relevel(data$volume_drink_during_competition, c("< 250mL / heure","Entre 250mL et 500mL / heure","> 500mL / heure" ))
+
+ggplot(data, aes(x=volume_drink_during_competition, fill=volume_drink_during_competition))+
+  theme_bw()+geom_bar() +
+  labs(title="Pendant la compétition, vous buvez quel volume?",x = "Volume de boisson bu par heure",                   
+       y = "Nombre d'observations")+
+  scale_fill_manual(values=c("azure2","cadetblue2","cornflowerblue","grey"))+
+  theme(legend.position = "none")+scale_x_discrete(labels=c("< 250mL","Entre 250mL et 500mL","> 500mL" , "Non renseigné"))
+```
+La coureurs prennent entre 250 et 500ml de boisson par heure pendant la compétition.
+
+\newpage
+
+## Alimentation pendant l'entraînement
+
+```{r which_eat_during_training, fig.cap = "Pendant l'entraînement, vous mangez ?", out.width='65%', fig.align='center'}
+vec_choix = c("Barres céréales / énergétiques","Gels / Pâtes de fruit",
+              "Fruits","Je ne mange pas")
+vec_nom_colonne = c("cereal_energy_bars_train","gels_fruit_jellies_train",
+                    "fruit_train","not_eat_train")
+colonne = data$which_eat_during_training
+x_legend = "Alimentation durant l'entraînement"
+angle = 0
+hjust = 0.5
+textual_multiple_choices_plot(data,vec_choix,vec_nom_colonne,colonne,x_legend,angle,hjust)
+```
+
+Nous observons que la majorité des traileurs consomment des barres de céréales ou énergétiques durant leur entraînement.
+
+## Fréquence d'alimentation pendant l'entraînement
+
+```{r frequence_hours_eat_during_training, fig.cap = "Pendant l'entraînement, a quelle fréquence vous mangez ?", out.width='65%', fig.align='center'}
+column = data$frequence_hours_eat_during_training
+ordered_levels <- c("< 1x / heure","1x ou 2x / heure","> 2x / heure")
+new_levels <- c("< 1x","1x ou 2x","> 2x")
+colors <- c("lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Fréquence horaire d'alimentation en entraînement"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+Durant leur entraînement, il apparaît que les traileurs mangent relativement peu souvent, moins d'une fois par heure. Cependant, beaucoup de personnes n'ont pas répondu à cette question.
+
+## Alimentation pendant la compétition
+
+```{r which_eat_during_competition, fig.cap = "Pendant la compétition, vous mangez ?", out.width='65%', fig.align='center'}
+vec_choix = c("Barres céréales / énergétiques","Gels / Pâtes de fruit",
+              "Fruits","Je ne mange pas")
+vec_nom_colonne = c("cereal_energy_bars_compet","gels_fruit_jellies_compet",
+                    "fruit_compet","not_eat_compet")
+colonne = data$which_eat_during_competition
+x_legend = "Alimentation durant la compétition"
+angle = 0
+hjust = 0.5
+textual_multiple_choices_plot(data,vec_choix,vec_nom_colonne,colonne,x_legend,angle,hjust)
+```
+
+Nous remarquons que très peu de personnes ne mangent rien durant la compétition. Concernant l'alimentation des autres, elle est répartie de manière homogène entre les barres de céréales ou énergétiques, les fruits et les gels ou pâtes de fruit.
+
+## Fréquence d'alimentation pendant la compétition
+
+```{r frequence_hours_eat_during_competition, fig.cap = "Pendant la compétition, a quelle fréquence vous mangez ?", out.width='65%', fig.align='center'}
+column = data$frequence_hours_eat_during_competition
+ordered_levels <- c("< 1x / heure","1x ou 2x / heure","> 2x / heure")
+new_levels <- c("< 1x","1x ou 2x","> 2x")
+colors <- c("lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Fréquence horaire d'alimentation en entraînement"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+Durant la compétition, il apparaît que les traileurs mangent majoritairement entre une et deux fois par heure.
+
+# Santé physique
+
+## Blessure de trail
+
+```{r trail_injury_illness, fig.cap = "Dans l'année écoulée, avez-vous été blessé ou malade en lien avec votre pratique du trail ?", out.width='65%', fig.align='center'}
+column = data$trail_injury_illness
+ordered_levels <- c("Oui","Non")
+new_levels <- c("Oui","Non")
+colors <- c("seagreen1","indianred1")
+x_legend <- "Blessure ou maladie"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+La tendance générale montre qu'une majorité des répondants n'a pas été malade ou blessée en lien avec sa pratique du trail, environ 3/5. Cependant, beaucoup de blessures et/ou maladies sont à constater, pour environ 2/5 des personnes.
+
+## Problème de santé lié au trail
+
+```{r trail_health_problem, fig.cap = "Dans l'année écoulée, parmi les problèmes de santé suivants le(s)quel.s avez-vous eu en lien avec votre pratique du trail ?", out.width='65%', fig.align='center'}
+vec_choix = c("Blessure ligamentaire","Blessure musculo-tendineuse / aponévrotique",
+              "Problème osseux","Problème articulaire","Autres")
+vec_nom_colonne = c("ligament_injury","musculo-tendinous_aponeurotic_injury",
+                    "bone_problem","joint_problem","other")
+colonne = data$trail_health_problem
+x_legend = "Problème de santé en lien avec le trail"
+angle = 45
+hjust = 1
+textual_multiple_choices_plot(data,vec_choix,vec_nom_colonne,colonne,x_legend,angle,hjust)
+```
+
+Les différents problèmes de santé observés en lien avec le trail montrent une majorité de blessures musculo-tendineuse ou aponévrotique.
+
+## Problèmes de santé ayant empêché l'entraînement
+
+```{r trail_health_problem_involve_no_training, fig.cap = "Ce.s problème.s de santé a(ont)-t-il.s entraîné une impossibilité de vous entraîner en course à pied ?", out.width='65%', fig.align='center'}
+column = data$trail_health_problem_involve_no_training
+ordered_levels <- c("Oui","Non")
+new_levels <- c("Oui","Non")
+colors <- c("seagreen1","indianred1")
+x_legend <- "Arrêt du trail"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+Concernant les réponses obtenues à la question de l'arrêt du trail pour cause de problème de santé, on remarque une majorité de réponses positives de l'ordre de trois quarts.
+
+## Durée d'empêchement d'entraînement pour cause de blessure
+
+```{r time_trail_health_problem_involve_no_training, fig.cap = "Pendant combien de temps ce.s problème.s de santé a(ont)-t-il.s entraîné une impossibilité de vous entraîner en course à pied ?", out.width='65%', fig.align='center'}
+column = data$time_trail_health_problem_involve_no_training
+ordered_levels <- c("< 2 semaines","2 à 4 semaines","5 à 8 semaines","> 8 semaines")
+new_levels <- c("< 2 semaines","2 à 4 semaines","5 à 8 semaines","> 8 semaines")
+colors <- c("seagreen1","lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Durée problèmes de santé"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+Concernant la question de la durée d'impossibilité de s'entraîner en course à pied, les réponses sont réparties de manière homogène selon les différents choix de réponse.
+
+## Fréquence des rendez-vous médicaux 
+
+```{r frequence_medical_apointment_trail, fig.cap = "A quelle fréquence consultez-vous un médecin et/ou personnel de santé en lien avec votre pratique du trail ?", out.width='65%', fig.align='center'}
+column = data$frequence_medical_apointment_trail
+ordered_levels <- c("< 2x / an","2x à 6x / an","> 6x / an")
+new_levels <- c("< 2x","2x à 6x","> 6x")
+colors <- c("lightgoldenrod1", "tan1","indianred1")
+x_legend <- "Féquence annuelle des consultations médicales"
+textual_unique_choice_plot(column,ordered_levels,new_levels,colors,x_legend)
+```
+
+Nous observons globalement peu de consultations médicales annuelles, une majorité s'y rend moins de 2X par an.
+
+## Raison des visites médicales
+
+```{r echo=FALSE}
+vec_choix = c("Gestion d'une blessure","Conseils nutritionnel","Conseils sur la prise de médicaments","Conseils sur la récupération","Conseils sur la préparation physique","Visite de contrôle et/ou obtention de certificat.s", "Prescription d'un bilan sanguin")
+vec_nom_colonne = c("medical_apointment_injury","medical_apointment_nutrition", "medical_apointment_treatment", "medical_apointment_recuperation", "medical_apointment_physical_preparation", "medical_apointment_control_certificat", "medical_apointment_blood_test")
+colonne = data$reason_medical_apointment_trail
+df = choix_multiples(data, vec_choix,vec_nom_colonne,colonne)
+data = cbind(data,df)
+
+df_medical_apointment=data%>%select(medical_apointment_injury,medical_apointment_nutrition, medical_apointment_treatment, medical_apointment_recuperation, medical_apointment_physical_preparation, medical_apointment_control_certificat, medical_apointment_blood_test)
+
+df_medical_apointment=c(length(df_medical_apointment$medical_apointment_injury)-sum(df_medical_apointment$medical_apointment_injury),length(df_medical_apointment$medical_apointment_nutrition)-sum(df_medical_apointment$medical_apointment_nutrition),
+            length(df_medical_apointment$medical_apointment_treatment)-sum(df_medical_apointment$medical_apointment_treatment),length(df_medical_apointment$medical_apointment_recuperation)-sum(df_medical_apointment$medical_apointment_recuperation),
+            length(df_medical_apointment$medical_apointment_physical_preparation)-sum(df_medical_apointment$medical_apointment_physical_preparation), length(df_medical_apointment$medical_apointment_control_certificat)-sum(df_medical_apointment$medical_apointment_control_certificat),
+            length(df_medical_apointment$medical_apointment_blood_test)-sum(df_medical_apointment$medical_apointment_blood_test))
+
+data_frame=as.data.frame(cbind(vec_choix,df_medical_apointment))
+
+data_frame$df_medical_apointment=as.numeric(data_frame$df_medical_apointment)
+data_frame$vec_choix=as.factor(data_frame$vec_choix)
+
+ggplot(data_frame, aes(x=vec_choix,y=df_medical_apointment, fill=vec_choix))+
+  theme_bw()+geom_bar(stat="identity") +
+  labs(title = "Quel.s était.ent le.s motif.s des consultations médicales \n pour la pratique du trail ? ", x = "Raison de la visite médicale",
+       y = "Nombre d'observations")+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none", axis.text.x=element_text(angle=90,hjust=1))
+```
+On constate que la majeure partie des visites médicales sont liées à une demande certificat ou pour la gestion d'un blessure, très peu sont liées à la prise d'un traitement. Les autres raisons sont réparties de façon relativement homogène.
+
+## Pathologies
+
+```{r echo=FALSE}
+vec_choix = c("Hypertension artérielle","Diabète","Maladie des artères du cœur","Autre maladie cardiaque","Asthme","Autre maladie pulmonaire")
+vec_nom_colonne = c("illness_hypertension","illness_diabetes", "illness_heart_artery_disease", "illness_other_heart_disease", "illness_asthma", "illness_other_lung_disease")
+colonne = data$have_this_illness
+
+df = choix_multiples(data, vec_choix,vec_nom_colonne,colonne)
+data = cbind(data,df)
+
+df_illness=data%>%select(illness_hypertension,illness_diabetes, illness_heart_artery_disease, illness_other_heart_disease, illness_asthma, illness_other_lung_disease)
+
+df_illness=c(length(df_illness$illness_hypertension)-sum(df_illness$illness_hypertension),length(df_illness$illness_diabetes)-sum(df_illness$illness_diabetes),
+                        length(df_illness$illness_heart_artery_disease)-sum(df_illness$illness_heart_artery_disease),length(df_illness$illness_other_heart_disease)-sum(df_illness$illness_other_heart_disease),
+                        length(df_illness$illness_asthma)-sum(df_illness$illness_asthma), length(df_illness$illness_other_lung_disease)-sum(df_illness$illness_other_lung_disease))
+
+data_frame=as.data.frame(cbind(vec_choix,df_illness))
+
+data_frame$df_illness=as.numeric(data_frame$df_illness)
+data_frame$vec_choix=as.factor(data_frame$vec_choix)
+
+ggplot(data_frame, aes(x=vec_choix,y=df_illness, fill=vec_choix))+
+  theme_bw()+geom_bar(stat="identity") +
+  labs(title = "Présentez-vous actuellement une ou plusieurs des maladies suivantes ?", x = "Pathologie",
+       y = "Nombre d'observations")+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none", axis.text.x=element_text(angle=90,hjust=1))
+```
+Il n'y a aucun des répondants qui a du diabète. La majorité des coureurs ayant une pathologie ont de l'asthme.
+
+## Statut tabagique
+
+```{r echo=FALSE}
+data$smoke = as.factor(data$smoke)
+
+ggplot(data = data, aes(smoke, fill = smoke))+
+  geom_bar() + theme_bw() + 
+  labs(y = "Nombre d'observations", title = "Fumez-vous ou avez-vous fumé régulièrement au cours de l'année écoulée ?",x = "Fumeur régulier")+
+  scale_fill_manual (values = c("indianred1", "seagreen1","grey"), name = "Fumeur régulier", labels = c("Non", "Oui", "Non renseigné")) + 
+  scale_x_discrete(labels = c("Non", "Oui", "Non renseigné")) + theme(legend.position = "none")
+```
+
+Très peu de coureurs sont des fumeurs réguliers. Cependant il est possible d'observer un biais de réponse à cette question. Le sportifs ont tendance à ne pas dire qu'ils fument dans un questionnaire malgré que cela puisse être le cas.
+
+# Caractéristiques psychologiques
+
+## Epanouissement
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(fulfillment, fill = fulfillment))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure de l'épanouissement",x = "Score d'épanouissement")
+```
+
+Les coureurs semblent globalement épanouis.
+
+## Priorités
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(priority, fill = priority))+
+  geom_histogram(alpha= 0.6,aes(y=after_stat(count/sum(count)))) + theme_bw()+ 
+  labs(y = "Fréquence", title = "Mesure des priorités",x = "Score de priorités")
+```
+
+La pratique du trail ne gène pas leur vie quotidienne, ce n'est pas leur priorité, ils arrivent a bien gérer leur vie personnelle en parallèle de leur pratique.
+
+## Motivation intrinsèque
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(intrinsic_motivation, fill = intrinsic_motivation))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure de la motivation intrinsèque",x = "Score de motivation intrinsèque")
+```
+
+Beaucoup de coureurs pratiquent le trail avec plaisir et par envie personnelle.
+
+## Motivation identifiée
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(identified_motivation, fill = identified_motivation))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure de la motivation identifiée",x = "Score de motivation identifiée")
+```
+
+La pratique du trail leur apporte du positif, donne un sens a leur vie.
+
+## Motivation intégrée
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(integrated_motivation, fill = integrated_motivation))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure de la motivation intégrée",x = "Score de motivation intégrée")
+```
+
+Selon les coureurs, le trail est un sport qui leur apporte vraiment, il fait parti de leur identité. 
+
+## Motivation introjectée
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(introjected_motivation, fill = introjected_motivation))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure de la motivation introjectée",x = "Score de motivation introjectée")
+```
+
+La motivation des coureurs à continuer le trail ne vient pas de la peur des conséquences de leur arrêt de la pratique. 
+
+## Motivation externe
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(external_motivation, fill = external_motivation))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure de la motivation externe",x = "Score de motivation externe")
+```
+
+La motivation des coureurs n'est vraiment pas d'origine externe mais purement d'origine interne.
+
+## Force mentale générale  
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=global_mental_force, fill=global_mental_force))+
+  theme_bw()+geom_histogram() +
+  labs(title="Force mentale générale",x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+On remarque une force mentale générale moyennement haute.
+
+
+## Confiance   
+```{r echo=FALSE , message=FALSE, warning=FALSE}
+ggplot(data, aes(x=confidence, fill=confidence))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Confiance ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+Les coureurs ont une confiance en eux moyennement haute.
+
+
+## Consistence   
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=consistency, fill=consistency))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Consistance ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+Les coureurs sont plutôt ambitieux et concentré dans le but d'atteindre leur objectifs.
+
+## Contôle  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=control, fill=control))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Contrôle ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+Les coureurs contôlent moyennement leurs émotions, ils se laissent un peu submerger par certaines.
+
+## Discours interne en général 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=general_internal_speech, fill=general_internal_speech))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Utilisation du discours interne en général   ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+Les coureurs se parlent plutôt positivement.
+
+## Discours interne en compétition  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=training_internal_speech, fill=training_internal_speech))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Utilisation du discours interne en compétition  ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+Les coureurs ont recours au discours interne pour parvenir aux compétitions.
+
+## Discours interne à l'entrainement  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=competition_internal_speech, fill=competition_internal_speech))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Utilisation du discours interne à l'entrainement  ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+Ils ont un peu moins recours au discours interne lors des entrainements.
+
+## Anxiété générale avant compétition  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=general_precompetitive_anxiety, fill=general_precompetitive_anxiety))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Anxiété générale ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+On remarque une anxiété pré-compétition très faible. 
+
+## Anxiété somatique   
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=somatic_anxiety, fill=somatic_anxiety))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Anxiété somatique  ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+L'anxiété somatique des participants est assez faible.
+
+## Anxiété cognitive   
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=cognitive_anxiety, fill=cognitive_anxiety))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Anxiété cognitive  ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")
+```
+
+On remarque une anxiété cognitive faible.
+
+\newpage
+
+## Passion harmonieuse
+
+```{r harmonious_hobbies, fig.cap = "Représentation du score de passion harmonieuse", out.width='65%', fig.align='center'}
+ggplot(data, aes(x=harmonious_hobbies)) + 
+  geom_histogram(binwidth=0.2, alpha=0.6) +
+  labs(x = "Score de passion harmonieuse", y = "Nombre d'observations") +
+  theme_bw() +
+  theme(legend.position='none')
+```
+
+Il semblerait, que la pratique du trail soit globalement bien en harmonie avec la vie des répondants à ce questionnaire. Nous observons notamment un score minimal de 3/7.
+
+## Passion obsessive
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data = data, aes(obsessive_hobbies, fill = obsessive_hobbies))+
+  geom_histogram(alpha= 0.6) + theme_bw()+ 
+  labs(y = "Nombre d'observations", title = "Mesure des passions obsessives",x = "Score des passions obsessives")
+```
+Cette passion pour le trail est d'une obsession moyenne. Elle est globalement faiblement obsessionnelle mais sa pratique reste mi-saine. Il y a peu de coureurs pour lesquels cette passion est extrêmement obsessive.
+
+## Addiction   
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data, aes(x=addiction, fill=addiction))+
+  theme_bw()+geom_histogram() +
+  labs(title = "Addiction  ", x = "Score",                   
+       y = "Nombre d'observations")+
+  theme(legend.position = "none")+geom_vline(xintercept=24/6,linetype="dashed",color="red",size=1)
+```
+Beaucoup de sujets sont à risque de dépendance envers l'exercice physique.
+
+

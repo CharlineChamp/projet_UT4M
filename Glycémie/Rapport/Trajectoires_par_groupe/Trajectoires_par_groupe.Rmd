@@ -1,0 +1,179 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+library(readr)
+library(dplyr)
+library(gt)
+library(tidyr)
+library(ggplot2)
+library(reshape2)
+library(trajeR)
+library(lcmm)
+```
+
+\newpage
+\tableofcontents
+\newpage
+
+```{r}
+# Chargement des données
+data <- read_delim("~/GitHub/UT4M_psycho/Glycémie/Donnée/data_160V1.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ","), 
+    trim_ws = TRUE)
+gt(head(data))
+```
+
+```{r}
+# Mise en forme des données
+data <- data %>% dplyr::select(!c(date_reference,nouvelle_date)) 
+gt(head(data))
+```
+ 
+# Modélisation des trajectoires par la fonction *trajeR*
+
+```{r}
+data_bis <- na.omit(data)
+data_bis$numero_participant = as.factor(data_bis$numero_participant)
+data_bis <- data_bis %>% dcast(numero_participant ~ km, value.var = "moy_glucose")
+participant_160 <- c(1,3,5,7,8,9,12,15,16,17,20,22,24,25,28,30,33,34,35,36)
+participant_abandon <- c(3,4,12,15,16,23,34,35,36,37)
+data_bis$course160 <- ifelse(data_bis$numero_participant %in% participant_160, 1, 0)
+data_bis$finisher <- ifelse(data_bis$numero_participant %in% participant_abandon, 0, 1)
+```
+
+```{r eval=FALSE, include=FALSE}
+Y = data_bis[,c('course160', 'finisher')]
+Y = as.matrix(Y)
+A = as.data.frame(data_bis[,2:105])
+A = as.matrix(A)
+```
+
+```{r eval=FALSE, include=FALSE}
+solL_2 = trajeR(Y = Y, A = A, degre = c(1,1),Model = "CNORM", Method = "L", ssigma = FALSE)
+
+# Critère d'évaluation du modèle
+trajeRAIC(solL_2)
+trajeRBIC(solL_2)
+
+# Porportions de patients dans chaque groupe
+propAssign(solL_2, Y = Y, A = A)
+
+# Représentation graphiques du modèle
+plotrajeR(solL_2)
+plotrajeR(solL_2, Y = Y, A = A, Risk = X, col = c("yellow", "lightblue", "orange", "mediumblue"))
+```
+
+
+# Modélisation des trajectoires par la fonction *lcmm*
+
+```{r}
+data_sans_NA <- na.omit(data)
+data_sans_NA$numero_participant = as.numeric(data_sans_NA$numero_participant)
+data_sans_NA$section = as.factor(data_sans_NA$section)
+data_sans_NA$desir = as.factor(data_sans_NA$desir)
+data_sans_NA$desir1 = as.factor(data_sans_NA$desir1)
+data_sans_NA$finisher = as.factor(data_sans_NA$finisher)
+data_sans_NA$moy_glucose = as.numeric(data_sans_NA$moy_glucose)
+data_sans_NA$temps_ecoule_en_heure = as.numeric(data_sans_NA$temps_ecoule_en_heure)
+data_sans_NA$temps_par_km_minute = as.numeric(data_sans_NA$temps_par_km_minute)
+data_sans_NA$temps_en_minute_cumule = as.numeric(data_sans_NA$temps_en_minute_cumule)
+m1_gen <-lcmm(moy_glucose ~ km + perception + inconfort + plaisir + conflit + resist + desir1 + finisher, random=~1, subject='numero_participant', ng=1, data=data_sans_NA)
+summary(m1_gen)
+```
+
+```{r}
+m2_gen <-lcmm(moy_glucose ~ km + perception + inconfort + plaisir + conflit + resist + desir1 + finisher, random=~1, subject='numero_participant', ng=2, mixture = ~ km + perception + inconfort + plaisir + conflit + resist + desir1 + finisher, data=data_sans_NA,B=random(m1_gen))
+summary(m2_gen)
+```
+
+```{r}
+m3_gen <-lcmm(moy_glucose ~ perception + inconfort + plaisir + conflit + resist + desir1 + finisher + denivele_positif + denivele_negatif, random=~1, subject='numero_participant', ng=3, mixture = ~ perception + inconfort + plaisir + conflit + resist + desir1 + finisher + denivele_positif + denivele_negatif, data=data_sans_NA,B=random(m1_gen))
+summary(m3_gen)
+```
+
+
+```{r}
+table(m3_gen[["pprob"]][["class"]])
+```
+
+```{r}
+plot(m2_gen, which = "fit", var.time = "km", legend.loc = "right", xlab = "Temps", main = "", ylab = "Processus latent")
+```
+
+```{r}
+groupes = m2_gen$pprob[c(1,2)]
+groupes$numero_participant = as.factor(groupes$numero_participant)
+data$numero_participant = as.factor(data$numero_participant)
+groupes = left_join(data,groupes, by = 'numero_participant')
+groupes$numero_participant = as.factor(groupes$numero_participant)
+```
+
+```{r}
+groupes$class <- as.factor(groupes$class)
+```
+
+```{r}
+ggplot(groupes, aes(x = class, fill = factor(finisher))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Groupe", y = "Finisher ou Abandon", title = "Finisher ou Abandon en fonction de son groupe") +
+  scale_fill_manual(values = c("finisher" = "darkgreen", "abandon" = "red"), name = "Finisher ou Abandon")
+```
+
+
+```{r}
+ggplot(groupes, aes(x = class, y = perception)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Perception", title = "Boxplot de la perception par classe")
+```
+
+
+```{r}
+ggplot(groupes, aes(x = class, y = inconfort)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Inconfort", title = "Boxplot de l'inconfort par classe")
+```
+
+```{r}
+ggplot(groupes, aes(x = class, y = plaisir)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Plaisir", title = "Boxplot du plaisir par classe")
+```
+
+```{r}
+ggplot(groupes, aes(x = class, y = conflit)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Conflit", title = "Boxplot du conflit par classe")
+```
+
+```{r}
+ggplot(groupes, aes(x = class, y = resist)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Resistance", title = "Boxplot de la résistance par classe")
+```
+
+```{r}
+ggplot(groupes, aes(x = class, fill = factor(desir1))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Groupe", y = "Désir", title = "Désir en fonction de son groupe") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Désir")
+```
+
+```{r}
+ggplot(groupes, aes(x = class, y = denivele_positif)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Dénivelé positif", title = "Boxplot du dénivelé positif par classe")
+```
+
+```{r}
+ggplot(groupes, aes(x = class, y = denivele_negatif)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(x = "Classe", y = "Dénivelé négatif", title = "Boxplot du dénivelé négatif par classe")
+```

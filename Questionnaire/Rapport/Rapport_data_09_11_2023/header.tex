@@ -1,0 +1,60 @@
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+%\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{fullpage}
+\usepackage{eso-pic}
+
+%%% BLOQUER LES PLOTS
+\usepackage{float}
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][2]{
+    \expandafter\origfigure\expandafter[H]
+} {
+    \endorigfigure
+}
+
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\newcommand{\blap}[1]{\vbox to 0pt{#1\vss}}
+\newcommand\AtUpperLeftCorner[3]{%
+  \put(\LenToUnit{#1},\LenToUnit{\dimexpr\paperheight-#2}){\blap{#3}}%
+}
+\newcommand\AtUpperRightCorner[3]{%
+  \put(\LenToUnit{\dimexpr\paperwidth-#1},\LenToUnit{\dimexpr\paperheight-#2}){\blap{\llap{#3}}}%
+}
+
+
+\title{\Huge{Rapport concernant les données - 09/11/2023}}
+\author{\Large{Projet tutoré}}
+\makeatletter
+
+\AtBeginDocument{
+\begin{titlepage}
+    \enlargethispage{2cm}
+
+    \AddToShipoutPicture{
+        \AtUpperLeftCorner{1.5cm}{1cm}{\includegraphics[width=5cm]{logoIM2AG.png}}
+        \AtUpperLeftCorner{9cm}{1cm}{\includegraphics[width=3cm]{logoLJK.png}}
+        \AtUpperLeftCorner{6.5cm}{15cm}{\includegraphics[width=9cm]{logoUT4M.jpeg}}
+        \AtUpperRightCorner{1.5cm}{1cm}{\includegraphics[width=5cm]{logoSENS.png}}
+        }
+
+    \begin{center}
+        \vspace*{8cm}
+        \textsc{\@title}
+        \HRule
+        \vspace*{0.5cm}
+        \Large{Projet tutoré}
+    \end{center}
+
+    \vspace*{10cm}
+
+ \par\noindent\rlap{\Large Océane Baboulaz, Alice Chauveau}\hfill\llap{\Large M2 SSD}\par
+ \par\noindent\rlap{\Large Charline Champ et Morgane Maulet}\hfill\llap{\Large Année universitaire 2023/2024}\par
+\end{titlepage}
+\ClearShipoutPicture
+
+}

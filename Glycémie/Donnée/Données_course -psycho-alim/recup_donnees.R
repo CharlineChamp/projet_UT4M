@@ -1,0 +1,141 @@
+#-----------------------------------------------------------------#
+# Récupération des données brutes 
+#-----------------------------------------------------------------#
+
+# Chargez le package
+library(stringr)
+library(readxl)
+
+# Spécifiez le nouveau chemin du dossier principal
+chemin_dossier_principal <- "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/Données_course -psycho-alim"
+
+# Obtenez la liste des sous-dossiers
+sous_dossiers <- list.dirs(path = chemin_dossier_principal, full.names = TRUE, recursive = FALSE)
+
+# Initialisez un data frame vide pour stocker les données
+df_brute <- data.frame()
+df_alimentation <- data.frame()
+
+# Parcourez chaque sous-dossier
+for (sous_dossier in sous_dossiers) {
+  
+  # Récupération de numéro du participant
+  numero_participant <- tail(unlist(strsplit(sous_dossier, '/')), 1)
+  
+  # Obtenez la liste des fichiers XLSX dans le sous-dossier
+  fichiers_excel <- list.files(path = sous_dossier, pattern = "\\.xlsx$", full.names = TRUE)
+  
+  
+  # Parcourez chaque fichier XLSX
+  for (fichier_excel in fichiers_excel) {
+    print(fichier_excel)
+    # Convertir le nom de la feuille en minuscules avant la comparaison
+    sheet_name_pattern <- "tout"
+    
+    # Vérifier si la feuille existe dans le fichier Excel
+    matching_sheets <- grep(sheet_name_pattern, tolower(excel_sheets(fichier_excel)), ignore.case = TRUE)
+    
+    if (length(matching_sheets) > 0){
+      # Utilisez la première feuille qui correspond (ou ajustez la logique selon vos besoins)
+      selected_sheet <- excel_sheets(fichier_excel)[matching_sheets[1]]
+      
+      # Lisez le fichier Excel avec la feuille correspondante
+      df_temp <- read_excel(fichier_excel, sheet = selected_sheet, col_names = FALSE, skip = 1)
+      
+      vect <- c(20:22, 24:30)
+      num <- unique(df_temp[,2])
+      if(num %in% vect){
+        # Appliquer la modification à la colonne numéro 24
+        df_temp <- df_temp %>%
+          mutate(across(24, ~sub(" ", "  ", .)))
+        
+        # Convertir la colonne numéro 24 en format de date et heure
+        df_temp <- df_temp %>%
+          mutate(across(24, ~as.POSIXct(., format = "%d/%m/%Y  %H:%M:%S")))
+      }
+
+      # Ajoutez le numéro du participant 
+      df_temp$Participant <- numero_participant
+      
+      # Ajoutez le DataFrame résultant au DataFrame final
+      df_brute <- rbind(df_brute, df_temp)
+
+      }
+
+    if ("importation" %in% excel_sheets(fichier_excel)){
+
+      # Lisez le fichier Excel avec la feuille "importation"
+      df_temp <- read_excel(fichier_excel, sheet = "importation", col_names = TRUE)
+
+      # Ajoutez le numéro du participant
+      df_temp$Participant <- numero_participant
+
+      # Ajoutez le DataFrame résultant au DataFrame final
+      df_alimentation <- rbind(df_alimentation, df_temp)
+    }
+  }
+}
+
+# Triez le DataFrame par numéro de participant
+colnames(df_brute) <- liste_initiale <- c("N°Obs",
+                                          "1. Quel_est_votre_numero_de_participante_de",
+                                          "2. lieu",
+                                          "3. Perception_effort",
+                                          "4. inconfort-m",
+                                          "5. plaisir-r",
+                                          "6. di-freq",
+                                          "7. di-effic",
+                                          "8. desir",
+                                          "9. conflit",
+                                          "10. resist",
+                                          "11. desir1",
+                                          "12. nb-gels",
+                                          "13. nb-barre",
+                                          "14. nb-compote",
+                                          "15. nb-pates-de-fruits",
+                                          "16. remarques-alim",
+                                          "17. autres-alim",
+                                          "18. hydratation",
+                                          "19. hydratation-totale",
+                                          "20. hydratation-sucre-totale",
+                                          "21. remarques-boisson-sucre",
+                                          "22. CLE",
+                                          "23. DATE_SAISIE",
+                                          "24. DATE_ENREG",
+                                          "25. DATE_MODIF",
+                                          "26. TEMPS_SAISIE",
+                                          "27. ORIGINE_SAISIE",
+                                          "28. LANG_SAISIE",
+                                          "29. APPAREIL_SAISIE",
+                                          "30. PROGRESSION",
+                                          "31. DERNIERE_QUESTION_SAISIE",
+                                          "32. ENQUETEUR",
+                                          "Participant")
+df_brute$`1. Quel_est_votre_numero_de_participante_de` <- as.numeric(df_brute$`1. Quel_est_votre_numero_de_participante_de`)
+df_brute <- df_brute[order(df_brute$`1. Quel_est_votre_numero_de_participante_de`), ]
+
+# Écrivez le dataframe dans le fichier csv
+write.csv2(df_brute, file = "~/Documents/GitHub/UT4M_psycho/Glycémie/Donnée/Données_course -psycho-alim/data_scoreV1.csv", row.names = FALSE)
+
+
+#-----------------------------------------------------------------#
+# Code utilisé pour capter les differences entre les noms de colonnes
+#-----------------------------------------------------------------#
+
+
+# # Liste de dataframes à combiner
+# list_of_dataframes <- list(df_brute, df_temp)  # Remplacez df1, df2, df3 par vos dataframes
+# 
+# # Vérifier les noms de colonnes pour chaque dataframe
+# for (i in seq_along(list_of_dataframes)) {
+#   if (i > 1) {
+#     previous_names <- colnames(list_of_dataframes[[i - 1]])
+#     current_names <- colnames(list_of_dataframes[[i]])
+#     
+#     # Vérifier si les noms de colonnes sont identiques
+#     if (!identical(previous_names, current_names)) {
+#       different_columns <- setdiff(previous_names, current_names)
+#       cat("Les noms de colonnes du dataframe", i - 1, "qui ne correspondent pas au dataframe", i, ":", different_columns, "\n")
+#     }
+#   }
+# }

@@ -1,0 +1,19 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+```
+
+\newpage
+\tableofcontents
+\newpage
+ 
+# Nom de votre première partie 
+Commencer à écrire ici 

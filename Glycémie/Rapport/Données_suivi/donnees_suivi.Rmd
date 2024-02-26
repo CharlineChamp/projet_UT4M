@@ -1,0 +1,1441 @@
+---
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+library(dplyr)
+library(readr)
+library(gt)
+library(ggplot2)
+library(lubridate)
+library(gridExtra)
+library(lme4)
+library(lmerTest)
+library(sjPlot)
+```
+
+\newpage
+\tableofcontents
+\newpage
+ 
+# Mise en forme des données 
+
+```{r}
+# Chargement des données
+data <- read_delim("~/GitHub/UT4M_psycho/Glycémie/Donnée/Données-suivi-15-jours/Questionnaire - suivi glycémique-15jours.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+# Retrait des colonnes non nécessaires
+data <- data %>% dplyr::select(!c(EndDate, 
+                           Status, 
+                           IPAddress, 
+                           Progress, 
+                           'Duration (in seconds)',
+                           Finished,
+                           RecordedDate,
+                           ResponseId,
+                           RecipientLastName,
+                           RecipientFirstName,
+                           RecipientEmail,
+                           ExternalReference,
+                           LocationLatitude,
+                           LocationLongitude, 
+                           DistributionChannel,
+                           UserLanguage,
+                           Q16_1,
+                           Q16_2,
+                           Q16_3,
+                           Q16_4,
+                           Q42,
+                           Q41_1,
+                           Q41_2,
+                           Q41_3,
+                           Q41_4,
+                           Q14, 
+                           Q20, 
+                           Q24,
+                           Q26,
+                           Q32, 
+                           Q50))
+
+# Nomenclature des colonnes
+colnames(data) <- c("answer_day","participant_number", "day", "time_to_fall_asleep", "wake_up_time", "sleep_quality", "training", "sport", "other_sport", "training_start_time", "training_end_time", "training_theme", "other_training_theme", "perception_of_effort", "distance_covered", "vertical_drop", "eat_during_training", "other_eat_during_training", "drink_during_training", "type_of_drink", "amount_of_hydration", "second_training", "second_sport", "second_other_sport", "second_training_start_time", "second_training_end_time", "second_training_theme", "second_perception_of_effort", "second_distance_covered", "second_vertical_drop", "second_eat_during_training", "second_other_eat_during_training", "second_drink_during_training", "second_type_of_drink", "second_amount_of_hydration", "breakfast", "breakfast_time", "morning_snack", "morning_snack_time", "lunch", "lunch_time", "afternoon_snack", "dinner", "dinner_time")
+data <- data[-1,]
+
+# Ajustement du format des données
+data$participant_number = as.factor(data$participant_number)
+data$day = as.Date (data$day,format = "%d/%m/%Y")
+data$day = format(data$day, "%d/%m/%Y")
+data$time_to_fall_asleep <- gsub("h", ":", data$time_to_fall_asleep)
+data$time_to_fall_asleep <- as.POSIXct(data$time_to_fall_asleep, format = "%H:%M")
+data$time_to_fall_asleep <- format(data$time_to_fall_asleep, format = "%H:%M")
+data$wake_up_time <- gsub("h", ":", data$wake_up_time)
+data$wake_up_time <- as.POSIXct(data$wake_up_time, format = "%H:%M")
+data$wake_up_time <- format(data$wake_up_time, format = "%H:%M")
+data$sleep_quality <- as.numeric(data$sleep_quality)
+data$training <- as.factor(data$training)
+data$sport <- as.factor(data$sport)
+data$other_sport <- as.factor(data$other_sport)
+data$training_start_time <- gsub("h", ":", data$training_start_time)
+data$training_start_time <- as.POSIXct(data$training_start_time, format = "%H:%M")
+data$training_start_time <- format(data$training_start_time, format = "%H:%M")
+data$training_end_time <- gsub("h", ":", data$training_end_time)
+data$training_end_time <- as.POSIXct(data$training_end_time, format = "%H:%M")
+data$training_end_time <- format(data$training_end_time, format = "%H:%M")
+data$training_theme <- as.factor(data$training_theme)
+data$other_training_theme <- as.factor(data$other_training_theme)
+data$perception_of_effort <- as.factor(data$perception_of_effort)
+data$distance_covered <- as.numeric(data$distance_covered)
+data$vertical_drop <- as.numeric(data$vertical_drop)
+data$eat_during_training <- as.factor(data$eat_during_training)
+data$other_eat_during_training <- as.factor(data$other_eat_during_training)
+data$drink_during_training <- as.factor(data$drink_during_training)
+data$type_of_drink <- as.factor(data$type_of_drink)
+data$second_training <- as.factor(data$second_training)
+data$second_sport <- as.factor(data$second_sport)
+data$second_training_start_time <- gsub("h", ":", data$second_training_start_time)
+data$second_training_start_time <- as.POSIXct(data$second_training_start_time, format = "%H:%M")
+data$second_training_start_time <- format(data$second_training_start_time, format = "%H:%M")
+data$second_training_end_time <- gsub("h", ":", data$second_training_end_time)
+data$second_training_end_time <- as.POSIXct(data$second_training_end_time, format = "%H:%M")
+data$second_training_end_time <- format(data$second_training_end_time, format = "%H:%M")
+data$second_training_theme <- as.factor(data$second_training_theme)
+data$second_perception_of_effort <- as.factor(data$second_perception_of_effort)
+data$second_distance_covered <- as.numeric(data$second_distance_covered)
+data$second_vertical_drop <- as.numeric(data$second_vertical_drop)
+data$second_eat_during_training <- as.factor(data$second_eat_during_training)
+data$second_other_eat_during_training <- as.factor(data$second_other_eat_during_training)
+data$second_drink_during_training <- as.factor(data$second_drink_during_training)
+data$second_type_of_drink <- as.factor(data$second_type_of_drink)
+data$second_amount_of_hydration <- as.factor(data$second_amount_of_hydration)
+data$breakfast <- as.factor(data$breakfast)
+data$breakfast_time <- gsub("h", ":", data$breakfast_time)
+data$breakfast_time <- as.POSIXct(data$breakfast_time, format = "%H:%M")
+data$breakfast_time <- format(data$breakfast_time, format = "%H:%M")
+data$morning_snack <- as.factor(data$morning_snack)
+data$morning_snack_time <- gsub("h", ":", data$morning_snack_time)
+data$morning_snack_time <- as.POSIXct(data$morning_snack_time, format = "%H:%M")
+data$morning_snack_time <- format(data$morning_snack_time, format = "%H:%M")
+data$lunch <- as.factor(data$lunch)
+data$lunch_time <- gsub("h", ":", data$lunch_time)
+data$lunch_time <- as.POSIXct(data$lunch_time, format = "%H:%M")
+data$lunch_time <- format(data$lunch_time, format = "%H:%M")
+data$afternoon_snack <- as.factor(data$afternoon_snack)
+data$dinner <- as.factor(data$dinner)
+data$dinner_time <- gsub("h", ":", data$dinner_time)
+data$dinner_time <- as.POSIXct(data$dinner_time, format = "%H:%M")
+data$dinner_time <- format(data$dinner_time, format = "%H:%M")
+data$answer_day <- as.POSIXct(data$answer_day,format = "%d/%m/%Y %H:%M")
+data$answer_day <- format(data$answer_day,format = "%d/%m/%Y")
+
+# Reprise des dates
+liste_date <- c("13/07/2023","14/07/2023","15/07/2023","16/07/2023","17/07/2023","18/07/2023","19/07/2023","20/07/2023","21/07/2023","22/07/2023","23/07/2023","24/07/2023","25/07/2023","26/07/2023","27/07/2023","28/07/2023")
+data$day <- ifelse(!(data$day %in% liste_date) , data$answer_day, data$day)
+data <- data %>% dplyr::select(!c(answer_day))
+
+# Reprise des volumes d'eau
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "100", "100ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "250", "250ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "250 ml", "250ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1000", "1l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1000 ml", "1l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1000ml", "1l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "2500ml", "2.5l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1200 ml", "1.2l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "2750ml", "2.75l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1500", "1.5l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1500ml", "1.5l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "300", "300ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "3000", "3l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "1600ml", "1.6l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "3166ml", "3.166l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "2000", "2l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "2000ml", "2l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "3500", "3.5l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "4", "4l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "400", "400ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "500", "500ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "550", "550ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "5500", "5.5l", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "600", "600ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "750", "750ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "800", "800ml", data$amount_of_hydration)
+data$amount_of_hydration <- ifelse(data$amount_of_hydration == "900", "900ml", data$amount_of_hydration)
+data$amount_of_hydration <- as.factor(data$amount_of_hydration)
+
+#Visualisation des données
+gt(head(data))
+str(data)
+```
+
+```{r}
+# Groupement par participant des données
+data_group <- data%>%group_by(participant_number)
+
+# Ajout de la course effectuée
+particpant_160 <- c(1,3,5,7,8,9,12,15,16,17,20,22,24,25,28,30,33,34,35,36)
+data$race <- ifelse(data$participant_number %in% particpant_160, "160 km", "100 km")
+participant_abandon <- c(3,4,12,15,16,23,34,35,36,37)
+data$finisher <- ifelse(data$participant_number %in% participant_abandon, "Abandon", "Finisher")
+
+# Création des dataframe de 100km et de 160km séparemment
+data_100 <- data[data$race == "100 km",]
+data_160 <- data[data$race == "160 km",]
+```
+
+# Représentations graphiques
+
+## Qualité du sommeil
+
+```{r}
+ggplot(data, aes(x = day, y = sleep_quality, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Qualité du sommeil", title = "Qualité du sommeil au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 100, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 100, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 100,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = sleep_quality, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Qualité du sommeil", title = "Qualité du sommeil au cours du temps pour les coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 100, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 100, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 100,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+
+```{r}
+ggplot(data_160, aes(x = day, y = sleep_quality, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Qualité du sommeil", title = "Qualité du sommeil au cours du temps pour les coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 100, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 100, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 100,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+### Autres analyses
+
+```{r}
+data_j7 <- data[data$day == "13/07/2023",]
+p_val_course_j7 <- t.test(sleep_quality ~ race, data = data_j7)$p.value
+p_val_resultat_j7 <- t.test(sleep_quality ~ finisher, data = data_j7)$p.value
+
+graph_course_j7 <- ggplot(data_j7, aes(x = race, y = sleep_quality, fill = race)) +
+  geom_boxplot() +
+  labs(x = "Course", y = "Qualité du sommeil") +
+  theme_minimal()+
+  theme(legend.position = "none")+
+  ggtitle("7 jours avant la course")+ 
+  ylim(0, 100) 
+
+graph_resultat_j7 <- ggplot(data_j7, aes(x = finisher, y = sleep_quality, fill = finisher)) +
+  geom_boxplot() +
+  labs(x = "Résultat", y = "Qualité du sommeil") +
+  theme_minimal()+
+  theme(legend.position = "none")+
+  ggtitle("7 jours avant la course")+ 
+  ylim(0, 100) 
+
+data$dep_race <- ifelse(data$race == "100 km", "22/07/2023","21/07/2023")
+data_jj <- data[data$day == data$dep_race,]
+p_val_course_jj <- t.test(sleep_quality ~ race, data = data_jj)$p.value
+p_val_resultat_jj <- t.test(sleep_quality ~ finisher, data = data_jj)$p.value
+
+graph_course_jj <- ggplot(data_jj, aes(x = race, y = sleep_quality, fill = race)) +
+  geom_boxplot() +
+  labs(x = "Course", y = "Qualité du sommeil", fill = "Course effectuée") +
+  theme_minimal()+
+  ggtitle("Nuit avant la course")+ 
+  ylim(0, 100) 
+
+graph_resultat_jj <- ggplot(data_jj, aes(x = finisher, y = sleep_quality, fill = finisher)) +
+  geom_boxplot() +
+  labs(x = "Résultat", y = "Qualité du sommeil", fill = "Résultat de la course") +
+  theme_minimal()+
+  ggtitle("Nuit avant la course")+ 
+  ylim(0, 100) 
+
+
+grid.arrange(graph_course_j7, graph_course_jj, ncol = 2)
+
+grid.arrange(graph_resultat_j7, graph_resultat_jj, ncol = 2)
+
+col_1 <- c("Qualité du sommeil 7 jours avant la course ~ Course effectuée", "Qualité du sommeil la nuit avant la course ~ Course effectuée", "Qualité du sommeil 7 jours avant la course ~ Résultat du coureur", "Qualité du sommeil la nuit avant la course ~ Résultat du coureur")
+col_2 <- c(p_val_course_j7, p_val_course_jj, p_val_resultat_j7, p_val_resultat_jj)
+df <- data.frame(col_1, round(col_2,2))
+colnames(df) <- c("Test", "P-valeurs")
+gt(df)
+```
+
+
+#### MM qualité du sommeil par rapport à la date
+
+```{r}
+# Retrait de la nuit mixte du 23 avec des coureurs ayant fini et d'autres pas
+data_100 <- data_100[data_100$day != "23/07/2023",]
+
+# Coureurs du 100km
+mod_100 <- lmer(sleep_quality ~ day + (1| participant_number), data = data_100)
+```
+
+```{r}
+# Test de la significativité de l'effet aléatoire
+ranova(mod_100)
+```
+
+```{r}
+# Tableau des coefficients
+df_100 <- as.data.frame(summary(mod_100)$coefficients)
+tableau_100 = df_100 %>% gt(rowname_col = "rownames(df_100)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 100 km")
+tableau_100
+```
+
+```{r}
+# Représentation graphique des coefficients du modèle
+plot_model(mod_100, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 100 km")
+```
+
+```{r}
+# Retrait des nuits mixtes du 22 et 23 avec des coureurs ayant fini et d'autres pas
+data_160 <- data_160[data_160$day != "23/07/2023",]
+data_160 <- data_160[data_160$day != "22/07/2023",]
+data_160 <- data_160[data_160$day != "29/07/2023",]
+
+# Coureurs du 160 km
+mod_160 <- lmer(sleep_quality ~ day + (1| participant_number), data = data_160)
+```
+
+```{r}
+# Test de la significativité de l'effet aléatoire
+ranova(mod_160)
+```
+
+```{r}
+# Tableau des coefficients
+df_160 <- as.data.frame(summary(mod_160)$coefficients)
+tableau_160 = df_160 %>% gt(rowname_col = "rownames(df_160)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 160 km")
+tableau_160
+```
+
+```{r}
+# Représentation graphique des coefficients du modèle
+plot_model(mod_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 160 km")
+```
+
+#### MM qualité du sommeil par rapport à la date + statut
+
+```{r}
+# Coureurs du 100km
+mod_100_statut <- lmer(sleep_quality ~ day + finisher + (1| participant_number), data = data_100)
+```
+
+```{r}
+# Test de la significativité de l'effet aléatoire
+ranova(mod_100_statut)
+```
+
+```{r}
+# Tableau des coefficients
+df_100_statut <- as.data.frame(summary(mod_100_statut)$coefficients)
+tableau_100_statut = df_100_statut %>% gt(rowname_col = "rownames(df_100_statut)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 100 km")
+tableau_100_statut
+```
+
+```{r}
+# Représentation graphique des coefficients du modèle
+plot_model(mod_100_statut, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 100 km")
+```
+
+
+```{r}
+# Coureurs du 160 km
+mod_160_statut <- lmer(sleep_quality ~ day + finisher + (1| participant_number), data = data_160)
+```
+
+```{r}
+# Test de la significativité de l'effet aléatoire
+ranova(mod_160_statut)
+```
+
+```{r}
+# Tableau des coefficients
+df_160_statut <- as.data.frame(summary(mod_160_statut)$coefficients)
+tableau_160_statut = df_160_statut %>% gt(rowname_col = "rownames(df_160_statut)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 160 km")
+tableau_160_statut
+```
+
+```{r}
+# Représentation graphique des coefficients du modèle
+plot_model(mod_160_statut, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 160 km")
+```
+
+#### MM qualité du sommeil par rapport à la date + course
+
+```{r}
+# Coureurs du 100km
+mod_course <- lmer(sleep_quality ~ day + race + (1| participant_number), data = data)
+```
+
+```{r}
+# Test de la significativité de l'effet aléatoire
+ranova(mod_course)
+```
+
+```{r}
+# Tableau des coefficients
+df_course <- as.data.frame(summary(mod_course)$coefficients)
+tableau_course = df_course %>% gt(rowname_col = "rownames(df_course)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 100 km")
+tableau_course
+```
+
+```{r}
+# Représentation graphique des coefficients du modèle
+plot_model(mod_course, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 100 km")
+```
+
+
+
+## Heure du coucher
+
+```{r}
+ggplot(data, aes(x = day, y = time_to_fall_asleep, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de coucher", title = "Heure de coucher au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "23:45", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "23:45", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "23:45",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = time_to_fall_asleep, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de coucher", title = "Heure de coucher au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "23:45", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "23:45", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "23:45",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = time_to_fall_asleep, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de coucher", title = "Heure de coucher au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "23:45", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "23:45", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "23:45",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure du reveil
+
+```{r}
+ggplot(data, aes(x = day, y = wake_up_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de reveil", title = "Heure de réveil au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = wake_up_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de reveil", title = "Heure de réveil au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+
+
+```{r}
+ggplot(data_160, aes(x = day, y = wake_up_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de reveil", title = "Heure de réveil au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Entraînement
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Entraînement en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Entrainement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Entraînement en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Entrainement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Entraînement en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Entrainement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Sport effectué
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(sport))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Sport effectué en fonction de la date") +
+  scale_fill_manual(values = c("Autre" = "black", "Course à pied / trail" = "red", "Marche" = "orange", "Natation" = "blue", "Vélo (VTT ou route)" = "brown"), name = "Sport") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(sport))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Sport effectué en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Autre" = "black", "Course à pied / trail" = "red", "Marche" = "orange", "Natation" = "blue", "Vélo (VTT ou route)" = "brown"), name = "Sport") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(sport))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Sport effectué en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Autre" = "black", "Course à pied / trail" = "red", "Marche" = "orange", "Natation" = "blue", "Vélo (VTT ou route)" = "brown"), name = "Sport") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure de début de l'entraînement
+
+```{r}
+ggplot(data, aes(x = day, y = training_start_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de début de l'entraînement", title = "Heure de début de l'entraînement au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = training_start_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de début de l'entraînement", title = "Heure de début de l'entraînement au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+
+```{r}
+ggplot(data_160, aes(x = day, y = training_start_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de début de l'entraînement", title = "Heure de début de l'entraînement au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure de fin de l'entraînement
+
+```{r}
+ggplot(data, aes(x = day, y = training_end_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de fin de l'entraînement", title = "Heure de fin de l'entraînement au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = training_end_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de fin de l'entraînement", title = "Heure de fin de l'entraînement au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+
+```{r}
+ggplot(data_160, aes(x = day, y = training_end_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de fin de l'entraînement", title = "Heure de fin de l'entraînement au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+## Thème de l'entraînement
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(training_theme))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Thème de l'entraînement en fonction de la date") +
+  scale_fill_manual(values = c("Autres" = "black", "Endurance active ( effort modérée avec des intervalles d'effort de 10 à 50')" = "yellow3", "Endurance fondamentale ( 2 heures maximum)" = "orange", "Sortie longue / rando-trail / entraînement croisée long (supérieur à 2 heures d'effort)" = "blue", "Travail de résistance à plat ( effort intense avec des intervalles d'effort de 5' à 20')" = "brown", "Travail de résistance en montée (effort intense  avec des intervalles d'effort de 5' à 20' en montée)" ="brown3", "Vitesse Maximale Aérobie ( effort très intense avec des intervalles d'effort de 20'' à 5' à plat)" = "pink", "Vitesse Maximale Ascensionnelle ( effort très intense avec des intervalles d'effort de 20'' à 5' en montée)" = "orchid"), name = "Thème de l'entraînement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(training_theme))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Thème de l'entraînement en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Autres" = "black", "Endurance active ( effort modérée avec des intervalles d'effort de 10 à 50')" = "yellow3", "Endurance fondamentale ( 2 heures maximum)" = "orange", "Sortie longue / rando-trail / entraînement croisée long (supérieur à 2 heures d'effort)" = "blue", "Travail de résistance à plat ( effort intense avec des intervalles d'effort de 5' à 20')" = "brown", "Travail de résistance en montée (effort intense  avec des intervalles d'effort de 5' à 20' en montée)" ="brown3", "Vitesse Maximale Aérobie ( effort très intense avec des intervalles d'effort de 20'' à 5' à plat)" = "pink", "Vitesse Maximale Ascensionnelle ( effort très intense avec des intervalles d'effort de 20'' à 5' en montée)" = "orchid"), name = "Thème de l'entraînement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(training_theme))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Thème de l'entraînement en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Autres" = "black", "Endurance active ( effort modérée avec des intervalles d'effort de 10 à 50')" = "yellow3", "Endurance fondamentale ( 2 heures maximum)" = "orange", "Sortie longue / rando-trail / entraînement croisée long (supérieur à 2 heures d'effort)" = "blue", "Travail de résistance à plat ( effort intense avec des intervalles d'effort de 5' à 20')" = "brown", "Travail de résistance en montée (effort intense  avec des intervalles d'effort de 5' à 20' en montée)" ="brown3", "Vitesse Maximale Aérobie ( effort très intense avec des intervalles d'effort de 20'' à 5' à plat)" = "pink", "Vitesse Maximale Ascensionnelle ( effort très intense avec des intervalles d'effort de 20'' à 5' en montée)" = "orchid"), name = "Thème de l'entraînement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Perception de l'effort
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(perception_of_effort))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Perception de l'effort en fonction de la date") +
+  scale_fill_manual(values = c("Très difficile" = "black", "Difficile" = "brown", "Modéré" = "red", "Facile" = "orange", "Très facile" = "green"), name = "Perception de l'effort") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(perception_of_effort))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Perception de l'effort en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Très difficile" = "black", "Difficile" = "brown", "Modéré" = "red", "Facile" = "orange", "Très facile" = "green"), name = "Perception de l'effort") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(perception_of_effort))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Perception de l'effort en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Très difficile" = "black", "Difficile" = "brown", "Modéré" = "red", "Facile" = "orange", "Très facile" = "green"), name = "Perception de l'effort") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Distance parcourue
+
+```{r}
+ggplot(data, aes(x = day, y = distance_covered, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Distance parcourue pour le 1er entraînement", title = "Distance parcourue pour le 1er entraînement au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 100, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 100, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 100,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = distance_covered, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Distance parcourue pour le 1er entraînement", title = "Distance parcourue pour le 1er entraînement au cours du temps pour les coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 100, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 100, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 100,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = distance_covered, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Distance parcourue pour le 1er entraînement", title = "Distance parcourue pour le 1er entraînement au cours du temps pour les coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 100, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 100, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 100,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+
+## Dénivelé effectué
+
+```{r}
+ggplot(data, aes(x = day, y = vertical_drop, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Dénivelé effectué pour le 1er entraînement", title = "Dénivelé effectué pour le 1er entraînement au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 6000, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 6000, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 6000,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = vertical_drop, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Dénivelé effectué pour le 1er entraînement", title = "Dénivelé effectué pour le 1er entraînement au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 6000, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 6000, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 6000,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = vertical_drop, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Dénivelé effectué pour le 1er entraînement", title = "Dénivelé effectué pour le 1er entraînement au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = 6000, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 6000, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 6000,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Manger lors de l'entraînement
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(eat_during_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Manger lors de l'entraînement en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Manger") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(eat_during_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Manger lors de l'entraînement en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Manger") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(eat_during_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Manger lors de l'entraînement en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Manger") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Boire lors de l'entraînement
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(drink_during_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Boire lors de l'entraînement en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Boire") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(drink_during_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Boire lors de l'entraînement en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Boire") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(drink_during_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Boire lors de l'entraînement en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Boire") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Type de boisson
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(type_of_drink))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Type de boisson en fonction de la date") +
+  scale_fill_manual(values = c("Eau + boissons effort avec glucides" = "orange", "Eau + électrolytes" = "red", "Eau plate" = "lightblue", "Eau gazeuse" = "blue"), name = "Type de boisson") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 32, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 32, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 32,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(type_of_drink))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Type de boisson en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Eau + boissons effort avec glucides" = "orange", "Eau + électrolytes" = "red", "Eau plate" = "lightblue", "Eau gazeuse" = "blue"), name = "Type de boisson") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 32, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 32, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 32,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(type_of_drink))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Type de boisson en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Eau + boissons effort avec glucides" = "orange", "Eau + électrolytes" = "red", "Eau plate" = "lightblue", "Eau gazeuse" = "blue"), name = "Type de boisson") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 32, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 32, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 32,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Volume de boisson
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(amount_of_hydration))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Quantité bu en fonction de la date") +
+  #scale_fill_manual(values = c("Autre" = "black", "Course à pied / trail" = "red", "Marche" = "orange", "Natation" = "blue", "Vélo (VTT ou route)" = "brown"), name = "Quantité bu") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(amount_of_hydration))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Quantité bu en fonction de la date des coureurs du 100km") +
+  #scale_fill_manual(values = c("Autre" = "black", "Course à pied / trail" = "red", "Marche" = "orange", "Natation" = "blue", "Vélo (VTT ou route)" = "brown"), name = "Quantité bu") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(amount_of_hydration))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Quantité bu en fonction de la date des coureurs du 160km") +
+  #scale_fill_manual(values = c("Autre" = "black", "Course à pied / trail" = "red", "Marche" = "orange", "Natation" = "blue", "Vélo (VTT ou route)" = "brown"), name = "Quantité bu") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Second entraînement
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(second_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Second entraînement en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Second entraînement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 35, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 35, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 35,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(second_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Second entraînement en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Second entraînement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 35, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 35, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 35,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(second_training))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Second entraînement en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Second entraînement") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 35, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 35, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 35,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Petit déjeuner
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(breakfast))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un petit déjeuner en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un petit déjeuner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 32, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 32, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 32,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(breakfast))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un petit déjeuner en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un petit déjeuner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 32, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 32, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 32,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(breakfast))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un petit déjeuner en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un petit déjeuner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 32, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 32, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 32,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure du petit déjeuner
+
+```{r}
+ggplot(data, aes(x = day, y = breakfast_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du petit-déjeuner", title = "Heure du petit déjeuner au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = breakfast_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du petit-déjeuner", title = "Heure du petit déjeuner au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = breakfast_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du petit-déjeuner", title = "Heure du petit déjeuner au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Colation matinale
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(morning_snack))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation dans la matinée en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'une collation dans la matinée") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(morning_snack))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation dans la matinée en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'une collation dans la matinée") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(morning_snack))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation dans la matinée en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'une collation dans la matinée") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure de la colation matinale
+
+```{r}
+ggplot(data, aes(x = day, y = morning_snack_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de prise de la collation du matin", title = "Heure de prise de la collation du matin au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:30", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:30", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:30",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = morning_snack_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de prise de la collation du matin", title = "Heure de prise de la collation du matin au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:30", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:30", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:30",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = morning_snack_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure de prise de la collation du matin", title = "Heure de prise de la collation du matin au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "17:30", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "17:30", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "17:30",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Déjeuner
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(lunch))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un déjeuner en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un déjeuner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 34, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 34, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 34,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(lunch))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un déjeuner en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un déjeuner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 34, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 34, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 34,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(lunch))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un déjeuner en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un déjeuner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 34, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 34, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 34,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure du déjeuner
+
+```{r}
+ggplot(data, aes(x = day, y = lunch_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du déjeuner", title = "Heure du déjeuner au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = lunch_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du déjeuner", title = "Heure du déjeuner au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = lunch_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du déjeuner", title = "Heure du déjeuner au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "21:00", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Colation de l'après-midi
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(afternoon_snack))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation l'après-midi en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'une collation l'après-midi") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(afternoon_snack))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation l'après-midi en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'une collation l'après-midi") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(afternoon_snack))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation l'après-midi en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'une collation l'après-midi") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 28, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 28, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 28,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Diner
+
+```{r}
+ggplot(data, aes(x = day, fill = factor(dinner))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un diner en fonction de la date") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un diner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 35, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 35, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 35,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, fill = factor(dinner))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un diner en fonction de la date des coureurs du 100km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un diner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 35, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 35, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 35,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, fill = factor(dinner))) +
+  geom_bar(position = "dodge", width = 0.7) +
+  labs(x = "Date", y = "Nombre de personne", title = "Prise d'un diner en fonction de la date des coureurs du 160km") +
+  scale_fill_manual(values = c("Oui" = "darkgreen", "Non" = "red"), name = "Prise d'un diner") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "black", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "black", size = 1)+
+  annotate("text", x = "19/07/2023", y = 35, label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = 35, label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = 35,label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+## Heure du diner
+
+```{r}
+ggplot(data, aes(x = day, y = dinner_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du diner", title = "Heure du diner au cours du temps") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "23:55", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "23:55", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "23:55",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_100, aes(x = day, y = dinner_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du diner", title = "Heure du diner au cours du temps des coureurs du 100km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "22/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "23:55", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "23:55", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "23:55",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```
+
+```{r}
+ggplot(data_160, aes(x = day, y = dinner_time, color = factor(participant_number), group = participant_number)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Date", y = "Heure du diner", title = "Heure du diner au cours du temps des coureurs du 160km") +
+  scale_color_discrete(name = "Participant")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  geom_vline(xintercept = "21/07/2023", linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = "23/07/2023", linetype = "dashed", color = "red", size = 1)+
+  annotate("text", x = "19/07/2023", y = "23:55", label = "Avant la course", vjust = 1, hjust = 1, color = "black") +
+  annotate("text", x = "22/07/2023", y = "23:55", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
+  annotate("text", x = "24/07/2023", y = "23:55",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
+```

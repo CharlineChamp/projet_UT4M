@@ -1,0 +1,171 @@
+---
+title: "RAPPORT_LOG2"
+author: "CHAUVEAU Alice"
+date: "2023-12-18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Affichage du summary pour voir le nombre de NA   
+```{r}
+
+data <- read_excel("../../Data/dataset_V6.xlsx", sheet = "Sans NA")
+
+# names(data)
+data2=data
+# colnames(data2)
+data2$trail_injury_illness<-ifelse(data2$trail_injury_illness=="Oui",0,1)
+
+data2=data2%>%dplyr::select(trail_injury_illness,
+                     age, 
+                     weight,
+                     time_proportion_other_practice,
+                     start_trail,
+                     weekly_volume_profession,
+                     number_hours_practice_trail_phase_preparation,
+                     ITRA_rating_know,
+                     connected_platform,
+                     heart_rate_monitor_competition,
+                     heart_rate_monitor_train,
+                     coach_for_trail,
+                     trail_participation_last_two_seasons,
+                     which_races_UT4M_2023,
+                     distance_trail_participation_last_two_seasons,
+                     number_hours_training_trail_phase_preparation,
+                     kilometres_practice_trail_phase_preparation,
+                     drop_practice_trail_phase_preparation,
+                     number_hours_training_trail_phase_preparation,
+                     number_hours_practice_trail_phase_preparation,
+                     smoke,
+                     frequence_medical_apointment_trail,
+                     sex,
+                     frequence_trail_participation_last_two_seasons_by_season,
+                     fulfillment,
+                     priority,
+                     intrinsic_motivation,
+                     identified_motivation,
+                     integrated_motivation,
+                     introjected_motivation,
+                     external_motivation,
+                     global_mental_force,
+                     confidence,
+                     consistency,
+                     control,
+                     general_internal_speech,
+                     training_internal_speech,
+                     competition_internal_speech,
+                     general_precompetitive_anxiety,
+                     somatic_anxiety,
+                     cognitive_anxiety,
+                     harmonious_hobbies,
+                     obsessive_hobbies,
+                     addiction)
+
+data2$time_proportion_other_practice=as.factor(data2$time_proportion_other_practice)
+data2$drop_practice_trail_phase_preparation=as.factor(data2$drop_practice_trail_phase_preparation)
+data2$start_trail =as.factor(data2$start_trail)
+data2$number_hours_training_trail_phase_preparation=as.factor(data2$number_hours_training_trail_phase_preparation)
+data2$weekly_volume_profession=as.factor(data2$weekly_volume_profession)
+data2$number_hours_practice_trail_phase_preparation=as.factor(data2$number_hours_practice_trail_phase_preparation)
+data2$ITRA_rating_know=as.factor(data2$ITRA_rating_know)
+data2$connected_platform=as.factor(data2$connected_platform)
+data2$heart_rate_monitor_competition=as.factor(data2$heart_rate_monitor_competition)
+data2$heart_rate_monitor_train=as.factor(data2$heart_rate_monitor_train)
+data2$coach_for_trail=as.factor(data2$coach_for_trail)
+data2$distance_trail_participation_last_two_seasons=as.factor(data2$distance_trail_participation_last_two_seasons)
+data2$number_hours_training_trail_phase_preparation=as.factor(data2$number_hours_training_trail_phase_preparation)
+data2$kilometres_practice_trail_phase_preparation=as.factor(data2$kilometres_practice_trail_phase_preparation)
+data2$drop_practice_trail_phase_preparation=as.factor(data2$drop_practice_trail_phase_preparation)
+data2$number_hours_practice_trail_phase_preparation=as.factor(data2$number_hours_practice_trail_phase_preparation)
+data2$smoke=as.factor(data2$smoke)
+data2$frequence_medical_apointment_trail=as.factor(data2$frequence_medical_apointment_trail)
+# data2$time_trail_health_problem_involve_no_training=as.factor(data2$time_trail_health_problem_involve_no_training)
+data2$sex=as.factor(data2$sex)
+data2$frequence_trail_participation_last_two_seasons_by_season=as.factor(data2$frequence_trail_participation_last_two_seasons_by_season)
+data2$trail_participation_last_two_seasons=as.factor(data2$trail_participation_last_two_seasons)
+data2$which_races_UT4M_2023=as.factor(data2$which_races_UT4M_2023)
+
+# summary(data2)
+
+```
+
+```{r}
+# # Imputation des NA
+# data_test <- data2 %>%
+#   mutate(across(where(is.numeric), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+# #summary(data_test)
+# 
+# data2=data_test
+# # summary(data2)
+```
+
+```{r}
+# data2=data2%>%drop_na()
+```
+
+# Prédiction en imputant les NAs par la moyenne
+
+```{r}
+# Imputation des NA
+data_NA_moyenne <- data2 %>%
+  mutate(across(where(is.numeric), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# Imputation des variables catégorielles par la classe majoritaire
+data_NA_moyenne <- data_NA_moyenne %>%
+  mutate(across(where(is.character), ~ifelse(is.na(.), names(which.max(table(.))), .)))
+
+# Recodage de la variable do_not_finish
+
+data_NA_moyenne$trail_injury_illness <- as.factor(data_NA_moyenne$trail_injury_illness)
+
+# Mise en forme des données
+data_NA_moyenne <- data_NA_moyenne %>% mutate_if(is.character, as.factor)
+```
+
+```{r}
+# Création des jeux de données d'apprentissage et de test
+taille_ech <- floor(0.8 * nrow(data_NA_moyenne))
+
+train_ind <- sample(seq_len(nrow(data_NA_moyenne)), size = taille_ech)
+
+x_train_moyenne <-makeX(data_NA_moyenne[train_ind,-1])
+y_train_moyenne <- data_NA_moyenne[train_ind,1]
+y_train_moyenne <- y_train_moyenne$trail_injury_illness
+x_test_moyenne <- as.data.frame(makeX(data_NA_moyenne[-train_ind,-1]))
+y_test_moyenne <- data_NA_moyenne[-train_ind,1]
+y_test_moyenne <- y_test_moyenne$trail_injury_illness
+```
+
+## Modèle complet simple
+```{r}
+# Modèle complet
+fit_moyenne <- glm(y_train_moyenne ~ x_train_moyenne,family=binomial(link="logit"))
+
+#summary(fit_moyenne)
+pred_moyenne <- predict(fit_moyenne, newx = as.matrix(x_test_moyenne), type = "response")
+
+# Seuil de classification
+seuil <- 0.5
+
+# Classer les prédictions en utilisant le seuil
+predictions_binaires <- ifelse(pred_moyenne > seuil, 1, 0)
+table(predictions_binaires)
+table(y_test_moyenne)
+RMSE_ridge <- sqrt(mean((pred_moyenne - y_test_moyenne)^2))
+
+# Résumé du modèle
+summary(fit_moyenne)
+```
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,347 @@
+---
+title: "Analyse_stat_160_100km"
+author: "CHAUVEAU Alice"
+date: "2024-02-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(forcats)
+library(lme4)
+library(lmerTest)
+library(gt)
+library(sjPlot)
+```
+
+
+# Récupération des données et séparation
+```{r}
+# Importation des données
+data<- read.csv2("data_glucoseV1.csv")
+
+# Séparer les données en deux groupes pour chaque type de course
+data_160km <- data %>% filter(course == "160 km")
+
+data_100km <- data %>% filter(course == "100 km")
+```
+
+```{r}
+#Mise en forme des colonnes de la base 
+data_160km$datetime <- as.POSIXct(data_160km$datetime, format = "%Y-%m-%d %H:%M:%S")
+
+data_100km$datetime <- as.POSIXct(data_100km$datetime, format = "%Y-%m-%d %H:%M:%S")
+```
+
+#####################################################################################
+##Temps passé dans les zones de glycémie pendant la course Général
+```{r}
+#filtrer les données du 160km peendant la course
+filtered_data_160km_course <- data_160km %>%
+  filter(datetime >= as.POSIXct("2023-07-21 09:00:00") & datetime <= as.POSIXct("2023-07-23 17:23:20"))
+
+#filtrer les données du 100km peendant la course
+filtered_data_100km_course <- data_100km %>%
+  filter(datetime >= as.POSIXct("2023-07-22 07:00:00") & datetime <= as.POSIXct("2023-07-23 10:58:26"))
+```
+
+#Rassemblement des données de course pour chaque participant du 160 km
+```{r}
+#abandons
+participant36<- filtered_data_160km_course %>% filter(numero_participant==36)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 15:13:00"))
+participant35 <- filtered_data_160km_course %>% filter(numero_participant==35)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 13:23:01"))
+participant34 <- filtered_data_160km_course %>% filter(numero_participant==34)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 11:12:39"))
+participant16 <- filtered_data_160km_course %>% filter(numero_participant==16)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 21:08:58"))
+participant15 <- filtered_data_160km_course %>% filter(numero_participant==15)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 17:13:10"))
+participant12 <- filtered_data_160km_course %>% filter(numero_participant==12)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 12:04:17"))
+participant3 <- filtered_data_160km_course %>% filter(numero_participant==3)%>%
+  filter(datetime <= as.POSIXct("2023-07-21 13:44:49"))
+
+#finishers
+participant1 <- filtered_data_160km_course %>% filter(numero_participant==1)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 11:25:16"))
+participant5 <- filtered_data_160km_course %>% filter(numero_participant==5)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:21:02"))
+participant7 <- filtered_data_160km_course %>% filter(numero_participant==7)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 19:00:08"))
+participant8 <- filtered_data_160km_course %>% filter(numero_participant==8)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 17:23:20"))
+participant9 <- filtered_data_160km_course %>% filter(numero_participant==9)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:41:33"))
+participant17 <- filtered_data_160km_course %>% filter(numero_participant==17)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 20:24:39"))
+participant20 <- filtered_data_160km_course %>% filter(numero_participant==20)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 06:48:33"))
+participant22 <- filtered_data_160km_course %>% filter(numero_participant==22)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:25:47"))
+participant24 <- filtered_data_160km_course %>% filter(numero_participant==24)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:23:43"))
+participant25 <- filtered_data_160km_course %>% filter(numero_participant==25)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 16:46:37"))
+participant28 <- filtered_data_160km_course %>% filter(numero_participant==28)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 01:59:06"))
+participant30 <- filtered_data_160km_course %>% filter(numero_participant==30)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 00:58:21"))
+participant33 <- filtered_data_160km_course %>% filter(numero_participant==33)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 01:35:53"))
+
+#création du dataframe avec tous les participants
+dataframe_glycemie_course_160=rbind(participant36,participant35,participant34,participant16,participant15,participant12,participant3,participant1,participant5,participant7,participant8,participant9,participant17,participant20,participant22,participant24,participant25,participant28,participant30,participant33)
+
+#création du dataframe avec les finishers
+data_frame_finishers_160=rbind(participant1,participant5,participant7,participant8,participant9,participant17,participant20,participant22,participant24,participant25,participant28,participant30,participant33)
+
+#création du dataframe avec les abandons
+data_frame_abandons_160=rbind(participant36,participant35,participant34,participant16, participant15, participant12, participant3)
+
+```
+
+#Rassemblement des données de course pour chaque participant du 100 km
+```{r}
+#abandons
+participant23 <- filtered_data_100km_course %>% filter(numero_participant==23)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 18:53:13"))
+participant37 <-filtered_data_100km_course %>% filter(numero_participant==37)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:19:44"))
+participant4 <- filtered_data_100km_course %>% filter(numero_participant==4)%>%
+  filter(datetime <= as.POSIXct("2023-07-22 23:22:54"))
+
+#finishers
+participant27 <- filtered_data_100km_course %>% filter(numero_participant==27)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 10:58:26"))
+participant26 <- filtered_data_100km_course %>% filter(numero_participant==26)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 09:14:12"))
+participant10 <- filtered_data_100km_course %>% filter(numero_participant==10)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:41:28"))
+participant31 <- filtered_data_100km_course %>% filter(numero_participant==31)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:20:55"))
+participant21 <- filtered_data_100km_course %>% filter(numero_participant==21)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 05:01:01"))
+participant32 <- filtered_data_100km_course %>% filter(numero_participant==32)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 04:47:34"))
+participant38 <- filtered_data_100km_course %>% filter(numero_participant==38)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 04:15:11"))
+participant11 <- filtered_data_100km_course %>% filter(numero_participant==11)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 03:33:29"))
+participant19 <- filtered_data_100km_course %>% filter(numero_participant==19)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:55:15"))
+participant6 <- filtered_data_100km_course %>% filter(numero_participant==6)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:44:32"))
+participant18 <- filtered_data_100km_course %>% filter(numero_participant==18)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:25:12"))
+participant29 <- filtered_data_100km_course %>% filter(numero_participant==29)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 02:02:54"))
+participant13 <- filtered_data_100km_course %>% filter(numero_participant==13)%>%
+  filter(datetime <= as.POSIXct("2023-07-23 00:43:27"))
+
+#création du dataframe avec tous les participants
+dataframe_glycemie_course_100=rbind(participant13,participant29,participant18,participant6,participant19,participant11,participant38,participant32,participant21,participant31,participant10,participant26,participant27,participant37,participant4,participant23)
+
+#création du dataframe avec les abandons
+data_frame_abandons_100=rbind(participant37,participant4,participant23)
+
+#création du dataframe avec les finishers
+data_frame_finishers_100=rbind(participant13,participant29,participant18,participant6,participant19,participant11,participant38,participant32,participant21,participant31,participant10,participant26,participant27)
+
+```
+
+#Modèle mixtes 160 km
+```{r}
+#Data finisher
+data_finish_160=data_frame_finishers_160%>%select(glucose, numero_participant)
+data_finish_160$type="finisher"
+
+#Data abandon
+data_abandon_160=data_frame_abandons_160%>%select(glucose,numero_participant)
+data_abandon_160$type="abandon"
+
+#Data 
+data_groupe_160=rbind(data_finish_160,data_abandon_160)
+# data_groupe_160$type=ifelse(data_groupe_160$type=="finisher",1,0)
+
+data_groupe_160$type=as.factor(data_groupe_160$type)
+levels(data_groupe_160$type)
+
+#Modèle 
+modele_160 <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe_160)
+summary(modele_160)
+# coefficients <- coef(modele_160)
+# coefficients
+
+ranova(modele_160)
+
+#graphique
+plot_model(modele_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() 
+
+```
+#Modèle mixtes 100 km
+```{r}
+#Data finisher
+data_finish_100=data_frame_finishers_100%>%select(glucose, numero_participant)
+data_finish_100$type="finisher"
+
+#Data abandon
+data_abandon_100=data_frame_abandons_100%>%select(glucose,numero_participant)
+data_abandon_100$type="abandon"
+
+#Data 
+data_groupe_100=rbind(data_finish_100,data_abandon_100)
+# data_groupe_100$type=ifelse(data_groupe_100$type=="finisher",1,0)
+
+data_groupe_100$type=as.factor(data_groupe_100$type)
+levels(data_groupe_100$type)
+
+
+#Modèle 
+modele_100 <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe_100)
+summary(modele_100)
+coefficients <- coef(modele_100)
+coefficients
+
+ranova(modele_100)
+
+#graphique
+
+plot_model(modele_100, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() 
+```
+
+
+#Modèle mixtes 100+160 km
+```{r}
+#Data finisher
+data_finish_100=data_frame_finishers_100%>%select(glucose, numero_participant)
+data_finish_100$type="finisher"
+data_finish_160=data_frame_finishers_160%>%select(glucose, numero_participant)
+data_finish_160$type="finisher"
+
+#Data abandon
+data_abandon_100=data_frame_abandons_100%>%select(glucose,numero_participant)
+data_abandon_100$type="abandon"
+data_abandon_160=data_frame_abandons_160%>%select(glucose,numero_participant)
+data_abandon_160$type="abandon"
+
+
+#Data 
+data_groupe=rbind(data_finish_100,data_finish_160,data_abandon_100,data_abandon_160)
+
+data_groupe$type=as.factor(data_groupe$type)
+levels(data_groupe$type)
+
+#Modèle 
+modele <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe)
+summary(modele)
+coefficients <- coef(modele)
+coefficients
+
+ranova(modele)
+
+#graphique
+
+plot_model(modele, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() 
+```
+#Pente des 2 premières heures sur le 160
+```{r}
+#Data finisher
+data_finish_160=data_frame_finishers_160%>%filter(datetime <= as.POSIXct("2023-07-21 11:00:00"))%>%select(glucose, numero_participant)
+data_finish_160$type="finisher"
+
+#Data abandon
+data_abandon_160=data_frame_abandons_160%>%filter(datetime <= as.POSIXct("2023-07-21 11:00:00"))%>%select(glucose,numero_participant)
+data_abandon_160$type="abandon"
+
+#Data 
+data_groupe_160=rbind(data_finish_160,data_abandon_160)
+
+#Modèle 
+modele_160 <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe_160)
+summary(modele_160)
+
+ranova(modele_160)
+
+#graphique
+
+plot_model(modele_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() 
+
+```
+#Pente entre 7 et 13h de course sur le 160
+```{r}
+#Data finisher
+data_finish_160=data_frame_finishers_160%>%filter(datetime >= as.POSIXct("2023-07-21 16:00:00") & datetime <= as.POSIXct("2023-07-21 22:00:00"))%>%select(glucose, numero_participant)
+data_finish_160$type="finisher"
+
+#Data abandon
+data_abandon_160=data_frame_abandons_160%>%filter(datetime >= as.POSIXct("2023-07-21 16:00:00") & datetime <= as.POSIXct("2023-07-21 22:00:00"))%>%select(glucose,numero_participant)
+data_abandon_160$type="abandon"
+
+#Data 
+data_groupe_160=rbind(data_finish_160,data_abandon_160)
+
+#Modèle 
+modele_160 <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe_160)
+summary(modele_160)
+
+ranova(modele_160)
+
+#graphique
+
+plot_model(modele_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() 
+
+```
+
+#Pente entre 12 et 18h de course sur le 160
+```{r}
+#Data finisher
+data_finish_160=data_frame_finishers_160%>% filter(datetime >= as.POSIXct("2023-07-21 21:00:00") & datetime <= as.POSIXct("2023-07-22 03:00:00"))%>%select(glucose, numero_participant)
+data_finish_160$type="finisher"
+
+#Data abandon
+data_abandon_160=data_frame_abandons_160%>% filter(datetime >= as.POSIXct("2023-07-21 21:00:00") & datetime <= as.POSIXct("2023-07-22 03:00:00"))%>%select(glucose,numero_participant)
+data_abandon_160$type="abandon"
+
+#Data 
+data_groupe_160=rbind(data_finish_160,data_abandon_160)
+
+#Modèle 
+modele_160 <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe_160)
+summary(modele_160)
+
+ranova(modele_160)
+
+#graphique
+plot_model(modele_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw()  
+```
+#Pente entre 10 et 15h de course sur le 160
+```{r}
+#Data finisher
+data_finish_160=data_frame_finishers_160%>% filter(datetime >= as.POSIXct("2023-07-21 19:00:00") & datetime <= as.POSIXct("2023-07-22 00:00:00"))%>%select(glucose, numero_participant)
+data_finish_160$type="finisher"
+
+#Data abandon
+data_abandon_160=data_frame_abandons_160%>% filter(datetime >= as.POSIXct("2023-07-21 19:00:00") & datetime <= as.POSIXct("2023-07-22 00:00:00"))%>%select(glucose,numero_participant)
+data_abandon_160$type="abandon"
+
+#Data 
+data_groupe_160=rbind(data_finish_160,data_abandon_160)
+
+#Modèle 
+modele_160 <- lmer(glucose ~ type + (1 | numero_participant), data = data_groupe_160)
+summary(modele_160)
+
+ranova(modele_160)
+
+#graphique
+
+plot_model(modele_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw()  
+```
+
+
+

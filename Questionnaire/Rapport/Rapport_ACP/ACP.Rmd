@@ -1,0 +1,159 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+
+# Chargement des librairies
+library(readxl)
+library(FactoMineR)
+library(factoextra)
+library(corrplot)
+```
+
+\newpage
+\tableofcontents
+\newpage
+ 
+Nous avons dans un premier temps réalisé une analyse en composantes principales pour visualiser de façon synthétique l'ensemble des variables quantitatives mesurées sur l'ensemble des coureurs et voir comment ils se positionnent dans les liens entre les variables psychologiques. 
+
+Dans un premier temps, nous avons calculé l'ACP de nos données. A partir de l'ACP obtenue, nous nous sommes intéressés aux valeurs propres qui mesurent la quantité de variances expliquée par chaque axe principal. Cette étude nous permet de déterminer le nombre de composantes principales à prendre en considération.
+
+```{r}
+# Importation des données
+data = read_excel("../../Data/dataset_V5.xlsx")
+```
+
+```{r}
+# Réalisation de l'ACP
+res.pca <- PCA(data[,c(46:53,57,60,63:65)], graph = FALSE)
+```
+
+```{r}
+# Variance expliquée par les différentes dimensions
+eig.val <- get_eigenvalue(res.pca)
+fviz_eig(res.pca, addlabels = TRUE)
+```
+
+Le graphique des valeurs propres nous permet de conclure que 46.2% des informations (variances) sont contenues dans les données conservées dans les 2 premières composantes principales. Afin de savoir quelles variables donnent du sens à chacun des axes et quelles variables il n'est pas nécessaire d'interpréter, on étudie, pour les variables et pour les coureurs, les cosinus carrés et les contributions. Dans un premier temps, on s'intéresse à l'étude des variables en commençant par réaliser leur représentation graphique sur le cercle de corrélation.
+
+```{r}
+var <- get_pca_var(res.pca)
+fviz_pca_var(res.pca, col.var="black", repel = T)
+```
+
+A partir de ce cercle, on remarque une corrélation positive entre les variables relatives à l'anxiété, la motivation introjectée et externe mais aussi à la variable de priorité, d'addiction et de motivation identifiée. Elles sont négativement corrélées à la variable contrôle et à la force mentale globale. Toutes ces variables n'ont pas de corrélations avec les variables de discours interne, de passion , de motivation intrinsèque, consistence, confidence et épanouissement.
+
+Nous avons poursuivi avec le graphique de corrélation des variables en fonction du cos2.
+
+```{r}
+corrplot(var$cos2,is.corr = FALSE)
+```
+
+Toutes ses conclusions peuvent se résumer sur un cercle de corrélation coloré en fonction de la valeur du cos2.
+
+```{r}
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+
+Par la suite on s’intéresse à la contribution des variables aux axes principaux. Les variables qui ne sont pas en corrélation avec un axe ou qui sont corrélées avec les derniers axes sont des variables à faible apport et peuvent être supprimées pour simplifier l’analyse globale. Plus la valeur de la contribution est importante, plus la variable contribue à la composante principale en question. La ligne rouge indique la contribution moyenne attendue dans le cas où la distribution des variables serait uniforme. Ainsi lorsque la contribution d’une variable est supérieure à ce seuil, cela signifie qu’elle peut être considérée comme importante pour contribuer à la composante.
+
+```{r}
+fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+```
+
+```{r}
+fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+```
+
+```{r}
+fviz_pca_var(res.pca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+
+Nous avons ensuite poursuivi l’étude avec l’analyse des individus en commençant par leur 
+représentation graphique en nuage de points.
+
+```{r}
+fviz_pca_ind (res.pca,repel = TRUE )
+```
+
+```{r, fig.cap="Sexe"}
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$sex)
+```
+
+```{r, fig.cap="Blessure"}
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$trail_injury_illness)
+```
+
+```{r, fig.cap="Coach"}
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$coach_for_trail)
+```
+
+```{r, fig.cap="Course"}
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$which_races_UT4M_2023)
+```
+
+```{r, fig.cap="Abandon"}
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$do_not_finish)
+```
+
+```{r, fig.cap="Catégorie"}
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$category)
+```
+
+```{r, fig.cap="Moitié du classement"}
+data$half_result = as.integer(data$Scratch_total/2)
+data$performance_2 = data$scratch
+data$performance_2 <- ifelse(data$performance_2 <= data$half_result, 1, 2)
+data$performance_2 = as.factor(data$performance_2 )
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$performance_2)
+```
+
+```{r, fig.cap="Quart du classement"}
+data$first_quarter = as.integer(data$Scratch_total/4)
+data$second_quarter = as.integer(data$Scratch_total/2)
+data$third_quarter = as.integer(data$Scratch_total/4*3)
+data$performance_4 = data$scratch
+data$performance_4 = ifelse(data$performance_4 <= data$first_quarter, 1, data$performance_4)
+data$performance_4 = ifelse(data$performance_4 <= data$second_quarter & data$performance_4 > data$first_quarter, 2, data$performance_4)
+data$performance_4 = ifelse(data$performance_4 <= data$third_quarter & data$performance_4 > data$second_quarter, 3, data$performance_4)
+data$performance_4 = ifelse(data$performance_4 > data$third_quarter, 4, data$performance_4)
+data$performance_4 = as.factor(data$performance_4 )
+fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$performance_4)
+```
+
+Comme pour les variables, on peut étudier le cosinus carré et la contribution des individus. Nous avons commencé par la contribution. La somme des contributions sur chaque axe est égale à 1 ce qui signifie que la moyenne de contribution des individus dans le cas où l’échantillon est uniforme est 
+1/n.
+
+```{r}
+fviz_contrib(res.pca, choice = "ind", axes = 1:2)
+
+```
+
+Comme les variables, il est également possible de colorer les individus en fonction de leurs valeurs de cos2.
+
+```{r}
+fviz_pca_ind (res.pca, col.ind = "cos2",
+              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+              repel = TRUE )
+```
+
+Enfin nous avons réalisé un biplot des individus croisés avec les variables dans les dimensions 1 et 2.
+
+```{r}
+fviz_pca_biplot(res.pca, repel = TRUE,
+                col.var = "#2E9FDF", 
+                col.ind = "#696969"  
+)
+```
+

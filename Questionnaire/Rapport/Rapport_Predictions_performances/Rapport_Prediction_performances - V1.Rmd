@@ -1,0 +1,590 @@
+---
+output:
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo = FALSE, results="verbatim", warning=FALSE)
+
+# Chargement des libraires
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(glmnet)
+library(readxl)
+library(MASS)
+```
+
+\newpage
+\tableofcontents
+\newpage
+ 
+# Mise en forme des données
+
+```{r}
+# Chargement des données 
+data <- read_excel("../../Data/dataset_V6.xlsx")
+
+# Réduction des données aux colonnes d'intérêt
+data <- data[,c(2:6,8,9,12:17,19:26,37,40:42,44:66)]
+data_analyse<- data%>%dplyr::select(!c(general_internal_speech,
+                                confidence,
+                                consistency,
+                                control,
+                                somatic_anxiety,
+                                cognitive_anxiety,
+                                distance_trail_participation_last_two_seasons,
+                                frequence_trail_participation_last_two_seasons_by_season,
+                                have_this_illness,
+                                time_trail_health_problem_involve_no_training
+))
+
+data_analyse_sous_dim_mental_force <- data%>%dplyr::select(!c(general_internal_speech,
+                                global_mental_force,
+                                somatic_anxiety,
+                                cognitive_anxiety,
+                                distance_trail_participation_last_two_seasons,
+                                frequence_trail_participation_last_two_seasons_by_season,
+                                have_this_illness,
+                                time_trail_health_problem_involve_no_training
+))
+
+data_analyse_sous_dim_anxiety <- data%>%dplyr::select(!c(general_internal_speech,
+                                confidence,
+                                consistency,
+                                control,
+                                general_precompetitive_anxiety,
+                                distance_trail_participation_last_two_seasons,
+                                frequence_trail_participation_last_two_seasons_by_season,
+                                have_this_illness,
+                                time_trail_health_problem_involve_no_training
+))
+
+# Mise en forme des données
+data_analyse <- data_analyse %>% mutate_if(is.character, as.factor)
+data_analyse_sous_dim_mental_force <- data_analyse_sous_dim_mental_force %>% mutate_if(is.character, as.factor)
+data_analyse_sous_dim_anxiety <- data_analyse_sous_dim_anxiety %>% mutate_if(is.character, as.factor)
+```
+
+# Prédiction en retirant les NAs
+
+```{r}
+# Retrait des lignes contenant des NA
+data_sans_NA <- data_analyse%>%drop_na()
+data_sans_NA_sous_dim_mental_force <- data_analyse_sous_dim_mental_force%>%drop_na()
+data_sans_NA_sous_dim_anxiety <- data_analyse_sous_dim_anxiety%>%drop_na()
+```
+
+```{r eval=FALSE, include=FALSE}
+# Création des jeux de données d'apprentissage et de test
+taille_ech <- floor(0.8 * nrow(data_sans_NA))
+
+train_ind <- sample(seq_len(nrow(data_sans_NA)), size = taille_ech)
+
+train <-data_sans_NA[train_ind,]
+test <- data_sans_NA[-train_ind,]
+
+taille_ech_sous_dim_mental_force <- floor(0.8 * nrow(data_sans_NA_sous_dim_mental_force))
+
+train_ind_sous_dim_mental_force <- sample(seq_len(nrow(data_sans_NA_sous_dim_mental_force)), size = taille_ech_sous_dim_mental_force)
+
+train_sous_dim_mental_force <-data_sans_NA_sous_dim_mental_force[train_ind_sous_dim_mental_force,]
+test_sous_dim_mental_force <- data_sans_NA_sous_dim_mental_force[-train_ind_sous_dim_mental_force,]
+
+taille_ech_sous_dim_anxiety <- floor(0.8 * nrow(data_sans_NA_sous_dim_anxiety))
+
+train_ind_sous_dim_anxiety <- sample(seq_len(nrow(data_sans_NA_sous_dim_anxiety)), size = taille_ech_sous_dim_anxiety)
+
+train_sous_dim_anxiety <-data_sans_NA_sous_dim_anxiety[train_ind_sous_dim_anxiety,]
+test_sous_dim_anxiety <- data_sans_NA_sous_dim_anxiety[-train_ind_sous_dim_anxiety,]
+```
+
+## Différents modèles univariés
+
+### Sex
+```{r}
+fit_sex <- glm(do_not_finish~sexH,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_sex)
+```
+
+### Age
+```{r}
+fit_age <- glm(do_not_finish~age, family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_age)
+```
+
+### Weight
+```{r}
+fit_weight <- glm(do_not_finish~weight,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_weight)
+```
+
+### Max Weight
+```{r}
+fit_max_weight <- glm(do_not_finish~max_weight,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_max_weight)
+```
+
+### Min Weight
+```{r}
+fit_min_weight <- glm(do_not_finish~min_weight,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_min_weight)
+```
+
+### Fulfillment
+```{r}
+fit_fulfillment <- glm(do_not_finish~fulfillment,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_fulfillment)
+```
+
+### Priority
+```{r}
+fit_priority <- glm(do_not_finish~priority,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_priority)
+```
+
+### Intrinsic motivation
+```{r}
+fit_intrinsic_motivation <- glm(do_not_finish~intrinsic_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_intrinsic_motivation)
+```
+
+### Identified motivation
+```{r}
+fit_identified_motivation <- glm(do_not_finish~identified_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_identified_motivation)
+```
+
+### Integrated motivation
+```{r}
+fit_integrated_motivation <- glm(do_not_finish~integrated_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_integrated_motivation)
+```
+
+### Introjected motivation
+```{r}
+fit_introjected_motivation <- glm(do_not_finish~introjected_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_introjected_motivation)
+```
+
+### External motivation
+```{r}
+fit_external_motivation <- glm(do_not_finish~external_motivation,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_external_motivation)
+```
+
+### Global mental force
+```{r}
+fit_global_mental_force <- glm(do_not_finish~global_mental_force,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_global_mental_force)
+```
+
+### Confidence
+```{r}
+fit_confidence <- glm(do_not_finish~confidence,family=binomial(link="logit"), data = data_sans_NA_sous_dim_mental_force)
+summary(fit_confidence)
+```
+
+### Consistency
+```{r}
+fit_consistency <- glm(do_not_finish~consistency,family=binomial(link="logit"), data = data_sans_NA_sous_dim_mental_force)
+summary(fit_consistency)
+```
+
+### Control
+```{r}
+fit_control <- glm(do_not_finish~control,family=binomial(link="logit"), data = data_sans_NA_sous_dim_mental_force)
+summary(fit_control)
+```
+
+### Training internal speech
+```{r}
+fit_training_internal_speech <- glm(do_not_finish~training_internal_speech,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_training_internal_speech)
+```
+
+### Competition internal speech
+```{r}
+fit_competition_internal_speech <- glm(do_not_finish~competition_internal_speech,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_competition_internal_speech)
+```
+
+### General precompetitive anxiety
+```{r}
+fit_general_internal_speech <- glm(do_not_finish~general_precompetitive_anxiety,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_general_internal_speech)
+```
+
+### Somatic anxiety
+```{r}
+fit_somatic_anxiety <- glm(do_not_finish~somatic_anxiety ,family=binomial(link="logit"), data = data_sans_NA_sous_dim_anxiety)
+summary(fit_somatic_anxiety )
+```
+
+### Cognitive anxiety
+```{r}
+fit_cognitive_anxiety  <- glm(do_not_finish~cognitive_anxiety,family=binomial(link="logit"), data = data_sans_NA_sous_dim_anxiety)
+summary(fit_cognitive_anxiety)
+```
+
+### Harmonious hobbies
+```{r}
+fit_harmonious_hobbies <- glm(do_not_finish~harmonious_hobbies,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_harmonious_hobbies)
+```
+
+### Obsessive hobbies
+```{r}
+fit_obsessive_hobbies <- glm(do_not_finish~obsessive_hobbies,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_obsessive_hobbies)
+```
+
+### Addiction
+```{r}
+fit_addiction <- glm(do_not_finish~addiction,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_addiction)
+```
+
+### Weekly volume profession 
+```{r}
+fit_weekly_volume_profession <- glm(do_not_finish~weekly_volume_profession35 +weekly_volume_profession45, family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_weekly_volume_profession)
+```
+
+### Start trail 
+```{r}
+fit_start_trail <- glm(do_not_finish~start_trail2 +start_trail25 + start_trail510,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_start_trail)
+```
+
+### Time proportion other practice
+```{r}
+fit_time_proportion_other_practice <- glm(do_not_finish~time_proportion_other_practice20 +time_proportion_other_practice50,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_time_proportion_other_practice)
+```
+
+### Coach for trail
+```{r}
+fit_coach_for_trailOui <- glm(do_not_finish~coach_for_trailOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_coach_for_trailOui)
+```
+
+### Heart rate monitor train
+```{r}
+fit_heart_rate_monitor_trainOui <- glm(do_not_finish~heart_rate_monitor_trainOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_heart_rate_monitor_trainOui)
+```
+
+### Heart rate monitor competition
+```{r}
+fit_heart_rate_monitor_competitionOui <- glm(do_not_finish~heart_rate_monitor_competitionOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_heart_rate_monitor_competitionOui)
+```
+
+### Connected platform
+```{r}
+fit_connected_platformOui <- glm(do_not_finish~connected_platformOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_connected_platformOui)
+```
+
+### ITRA rating know
+```{r}
+fit_ITRA_rating_knowOui <- glm(do_not_finish~ITRA_rating_knowOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_ITRA_rating_knowOui)
+```
+
+### Number hours practice trail phase preparation
+```{r}
+fit_number_hours_practice_trail_phase_preparation <- glm(do_not_finish~number_hours_practice_trail_phase_preparation3 +number_hours_practice_trail_phase_preparation37 + number_hours_practice_trail_phase_preparation712,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_number_hours_practice_trail_phase_preparation)
+```
+
+### Trail participation last two seasons
+```{r}
+fit_trail_participation_last_two_seasonsOui <- glm(do_not_finish~trail_participation_last_two_seasonsOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_trail_participation_last_two_seasonsOui)
+```
+
+### Drop practice trail phase preparation
+```{r}
+fit_drop_practice_trail_phase_preparation <- glm(do_not_finish~drop_practice_trail_phase_preparation1000+drop_practice_trail_phase_preparation2000,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_drop_practice_trail_phase_preparation)
+```
+
+### Kilometres practice trail phase preparation
+```{r}
+fit_kilometres_practice_trail_phase_preparation <- glm(do_not_finish~kilometres_practice_trail_phase_preparation20 + kilometres_practice_trail_phase_preparation2050 + kilometres_practice_trail_phase_preparation5080,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_kilometres_practice_trail_phase_preparation)
+```
+
+### Number hours training trail phase preparation
+```{r}
+fit_number_hours_training_trail_phase_preparation <- glm(do_not_finish~number_hours_training_trail_phase_preparation3 + number_hours_training_trail_phase_preparation37 + number_hours_training_trail_phase_preparation712,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_number_hours_training_trail_phase_preparation)
+```
+
+### Frequence medical apointment trail
+```{r}
+fit_frequence_medical_apointment_trail <- glm(do_not_finish~frequence_medical_apointment_trail2 + frequence_medical_apointment_trail6,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_frequence_medical_apointment_trail)
+```
+
+### Which races UT4M 2023
+```{r}
+fit_which_races_UT4M_2023 <- glm(do_not_finish~which_races_UT4M_2023_20km + which_races_UT4M_2023_40km + which_races_UT4M_2023_80km + which_races_UT4M_2023_100km,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_which_races_UT4M_2023)
+```
+
+### Trail health problem involve no training
+```{r}
+fit_trail_health_problem_involve_no_training <- glm(do_not_finish~trail_health_problem_involve_no_trainingOui, family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_trail_health_problem_involve_no_training)
+```
+
+### Time trail health problem involve no training
+```{r eval=FALSE, include=FALSE}
+fit_time_trail_health_problem_involve_no_training <- glm(do_not_finish~time_trail_health_problem_involve_no_training0 + time_trail_health_problem_involve_no_training2 + time_trail_health_problem_involve_no_training24 + time_trail_health_problem_involve_no_training58,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_time_trail_health_problem_involve_no_training)
+```
+
+### Smoke
+```{r}
+fit_smoke <- glm(do_not_finish~smokeOui,family=binomial(link="logit"), data = data_sans_NA)
+summary(fit_smoke)
+```
+
+## Modèle complet
+
+```{r}
+# Filtrer les colonnes de type factor
+facteur_columns <- sapply(train, is.factor)
+train_facteur <- train[, facteur_columns]
+
+# Créer une liste pour stocker les tableaux de contingence
+contingency_tables <- list()
+
+# Boucler à travers toutes les variables sauf la variable dépendante
+for (variable in names(train_facteur)) {
+  contingency_table <- table(train$do_not_finish, train[[variable]])
+  contingency_tables[[variable]] <- contingency_table
+}
+
+# Afficher les tableaux de contingence
+for (i in seq_along(contingency_tables)) {
+  cat("Table de contingence pour la variable", names(contingency_tables)[i], ":\n")
+  print(contingency_tables[[i]])
+  cat("\n")
+}
+```
+
+
+```{r}
+# Modèle complet
+fit <- glm(do_not_finish~.,family=binomial(link="logit"), data = train)
+summary(fit)
+AIC_fit = AIC(fit)
+cat("AIC :", AIC_fit, "\n")
+BIC_fit = BIC(fit)
+cat("BIC :", BIC_fit, "\n")
+```
+
+```{r}
+# Modèle complet sous dimension global mental force
+fit_sous_dim_mental_force <- glm(do_not_finish~.,family=binomial(link="logit"), data = train_sous_dim_mental_force)
+summary(fit_sous_dim_mental_force)
+AIC_fit_sous_dim_mental_force = AIC(fit_sous_dim_mental_force)
+cat("AIC sous dimension global mental force :", AIC_fit_sous_dim_mental_force, "\n")
+BIC_fit_sous_dim_mental_force = BIC(fit_sous_dim_mental_force)
+cat("BIC sous dimension global mental force :", BIC_fit_sous_dim_mental_force, "\n")
+```
+
+```{r}
+# Modèle complet sous dimension anxiety
+fit_sous_dim_anxiety <- glm(do_not_finish~.,family=binomial(link="logit"), data = train_sous_dim_anxiety)
+summary(fit_sous_dim_anxiety)
+AIC_fit_sous_dim_anxiety = AIC(fit_sous_dim_anxiety)
+cat("AIC sous dimension anxiety :", AIC_fit_sous_dim_anxiety, "\n")
+BIC_fit_sous_dim_anxiety = BIC(fit_sous_dim_anxiety)
+cat("BIC sous dimension anxiety :", BIC_fit_sous_dim_anxiety, "\n")
+```
+
+## Sélection Step
+
+```{r}
+# Sélection de variable par Step
+fit_AIC <- step(fit, direction = "both", trace = FALSE)
+summary(fit_AIC)
+AIC_fit_step = AIC(fit_AIC)
+cat("AIC :", AIC_fit_step, "\n")
+BIC_fit_step = BIC(fit_AIC)
+cat("BIC :", BIC_fit_step, "\n")
+```
+
+```{r}
+# Sélection de variable par Step sous dimension global mental force
+fit_AIC_sous_dim_mental_force <- step(fit_sous_dim_mental_force, direction = "both", trace = FALSE)
+summary(fit_AIC_sous_dim_mental_force)
+AIC_fit_step_sous_dim_mental_force = AIC(fit_AIC_sous_dim_mental_force)
+cat("AIC sous dimension global mental force :", AIC_fit_step_sous_dim_mental_force, "\n")
+BIC_fit_step_sous_dim_mental_force = BIC(fit_AIC_sous_dim_mental_force)
+cat("BIC sous dimension global mental force :", BIC_fit_step_sous_dim_mental_force, "\n")
+```
+
+```{r}
+# Sélection de variable par Step sous dimension anxiety
+fit_AIC_sous_dim_anxiety <- step(fit_sous_dim_anxiety, direction = "both", trace = FALSE)
+summary(fit_AIC_sous_dim_anxiety)
+AIC_fit_step_sous_dim_anxiety = AIC(fit_AIC_sous_dim_anxiety)
+cat("AIC sous dimension anxiety :", AIC_fit_step_sous_dim_anxiety, "\n")
+BIC_fit_step_sous_dim_anxiety = BIC(fit_AIC_sous_dim_anxiety)
+cat("BIC sous dimension anxiety :", BIC_fit_step_sous_dim_anxiety, "\n")
+```
+
+## Pénalisation Lasso
+
+```{r}
+# Modélisation lasso
+fit_lasso <-cv.glmnet(as.matrix(train[,-19]),  as.matrix(train[,19]), family = "binomial", alpha = 1)
+pred_lasso <- predict(fit_lasso, newx = as.matrix(test[,-25]), s=fit_lasso$lambda.min)
+
+# Prédiction lasso
+pred_lasso <- ifelse(pred_lasso > 0.5, 1, 0)
+```
+
+```{r}
+# Matrice de confusion
+matrice_confusion_lasso <- table(as.vector(pred_lasso), as.vector(test$do_not_finish))
+matrice_confusion_lasso
+
+# Collecte des données de la matrice de confusion
+TN <- matrice_confusion_lasso[1, 1]
+TP <- matrice_confusion_lasso[2, 2]  
+FN <- matrice_confusion_lasso[1, 2]  
+FP <- matrice_confusion_lasso[2, 1]  
+```
+
+```{r}
+accuracy <- (TP + TN)/(TP+TN+FP+FN)
+cat("L'accuracy mesure le nombre total de prédictions correctes par rapport au nombre total d'observations. L'accuracy est égale à : \n", round(accuracy, 4))
+specificity <- TP /(TP+FN)
+cat("\n La sensibilité mesure la capacité du modèle à détecter les vrais positifs. La spécificité est égale à : \n", round(specificity, 4))
+sensibility <- TN / (TN + FP)
+cat("\n La spécificité mesure la capacité du modèle à détecter les vrais négatifs. La sensibilité est égale à : \n", round(sensibility, 4))
+```
+
+```{r}
+# Fixation des paramètres
+m <- 100
+res<-matrix(nrow=53,ncol = m,NA)
+
+# Stabilité du lasso
+for (i in c(1:m)) {
+  taille_ech <- floor(0.8 * nrow(data_sans_NA))
+  train_ind <- sample(seq_len(nrow(data_sans_NA)), size = taille_ech)
+  x_train <-data_sans_NA[train_ind,-19]
+  y_train <- data_sans_NA[train_ind,"do_not_finish"]
+  y_train <- y_train$do_not_finish
+  x_test <- data_sans_NA[-train_ind,-19]
+  y_test <- data_sans_NA[-train_ind,"do_not_finish"]
+  y_test <- y_test$do_not_finish
+  fit_lasso <- cv.glmnet(as.matrix(x_train), y_train, family = "binomial", alpha = 1)
+  pred_lasso <- predict(fit_lasso, newx = as.matrix(x_test), s = fit_lasso$lambda.min)
+res[,i]<-(coef(fit_lasso)[,1]!=0)
+}
+
+nbfoisselect<-apply(res,1,sum)
+etiquettevar<-c("intercept",c(1:52))
+variable<-c("intercept",names(data_sans_NA[,-19]))
+data <- data.frame(
+  name=etiquettevar,
+  var = variable,
+  val=nbfoisselect
+)
+
+# Représentation graphique de la stabilité
+ggplot(data=data, aes(x=etiquettevar, y=nbfoisselect)) +
+  geom_bar(stat="identity", position=position_dodge(),fill="steelblue")+
+  geom_text(aes(label=nbfoisselect), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+ylab("Nombre sélectionné")+
+  xlab("Variable")+theme_minimal()+theme(axis.text.x = element_text(size = 12,
+                                                                   angle = 45))
+
+# Représentation numérique de la stabilité
+data[,-1] %>%  arrange(desc(nbfoisselect))
+```
+
+
+## Pénalisation Ridge
+
+```{r}
+# Modélisation ridge
+fit_ridge <-cv.glmnet(as.matrix(train[,-19]),  train$do_not_finish, family = "binomial", alpha = 0)
+pred_ridge <- predict(fit_ridge, newx = as.matrix(test[,-19]), s=fit_ridge$lambda.min)
+
+# Prédiction ridge
+pred_ridge <- ifelse(pred_ridge > 0.5, 1, 0)
+```
+
+```{r}
+# Matrice de confusion
+matrice_confusion_ridge <- table(pred_ridge, test$do_not_finish)
+matrice_confusion_ridge
+
+# Collecte des données de la matrice de confusion
+TN <- matrice_confusion_ridge[1, 1]
+TP <- matrice_confusion_ridge[2, 2]  
+FN <- matrice_confusion_ridge[1, 2]  
+FP <- matrice_confusion_ridge[2, 1]  
+```
+
+```{r}
+accuracy <- (TP + TN)/(TP+TN+FP+FN)
+cat("L'accuracy mesure le nombre total de prédictions correctes par rapport au nombre total d'observations. L'accuracy est égale à : \n", round(accuracy, 4))
+specificity <- TP /(TP+FN)
+cat("\n La sensibilité mesure la capacité du modèle à détecter les vrais positifs. La spécificité est égale à : \n", round(specificity, 4))
+sensibility <- TN / (TN + FP)
+cat("\n La spécificité mesure la capacité du modèle à détecter les vrais négatifs. La sensibilité est égale à : \n", round(sensibility, 4))
+```
+
+# Prédiction en imputant les NAs par la médiane
+
+```{r}
+# Imputation des NA
+data_NA_mediane <- data_analyse %>%
+  mutate(across(where(is.numeric), ~ifelse(is.na(.), median(., na.rm = TRUE), .)))
+
+# Imputation des variables catégorielles par la classe majoritaire
+data_NA_mediane <- data_NA_mediane %>%
+  mutate(across(where(is.character), ~ifelse(is.na(.), names(which.max(table(.))), .)))
+
+# Mise en forme des données
+data_NA_mediane <- data_NA_mediane %>% mutate_if(is.character, as.factor)
+```
+
+```{r}
+# Filtrer les colonnes de type factor
+facteur_columns_mediane <- sapply(data_NA_mediane, is.factor)
+facteur_mediane <- data_NA_mediane[, facteur_columns_mediane]
+
+# Créer une liste pour stocker les tableaux de contingence
+contingency_tables_mediane <- list()
+
+# Boucler à travers toutes les variables sauf la variable dépendante
+for (variable in names(facteur_mediane)) {
+  contingency_table_mediane <- table(data_NA_mediane$do_not_finish, data_NA_mediane[[variable]])
+  contingency_tables_mediane[[variable]] <- contingency_table_mediane
+}
+
+# Afficher les tableaux de contingence
+for (i in seq_along(contingency_tables_mediane)) {
+  cat("Table de contingence pour la variable", names(contingency_tables_mediane)[i], ":\n")
+  print(contingency_tables_mediane[[i]])
+  cat("\n")
+}
+```
