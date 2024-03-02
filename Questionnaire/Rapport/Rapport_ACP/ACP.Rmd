@@ -27,7 +27,7 @@ Dans un premier temps, nous avons calculé l'ACP de nos données. A partir de l'
 
 ```{r}
 # Importation des données
-data = read_excel("../../Data/dataset_V5.xlsx")
+data = read_excel("../../Donnée/dataset_V6.xlsx")
 ```
 
 ```{r}
@@ -44,6 +44,7 @@ fviz_eig(res.pca, addlabels = TRUE)
 Le graphique des valeurs propres nous permet de conclure que 46.2% des informations (variances) sont contenues dans les données conservées dans les 2 premières composantes principales. Afin de savoir quelles variables donnent du sens à chacun des axes et quelles variables il n'est pas nécessaire d'interpréter, on étudie, pour les variables et pour les coureurs, les cosinus carrés et les contributions. Dans un premier temps, on s'intéresse à l'étude des variables en commençant par réaliser leur représentation graphique sur le cercle de corrélation.
 
 ```{r}
+# Cercle de corrélation des variables
 var <- get_pca_var(res.pca)
 fviz_pca_var(res.pca, col.var="black", repel = T)
 ```
@@ -53,12 +54,14 @@ A partir de ce cercle, on remarque une corrélation positive entre les variables
 Nous avons poursuivi avec le graphique de corrélation des variables en fonction du cos2.
 
 ```{r}
+# Graphique de corrélation des variables coloré en fonction du cos^2
 corrplot(var$cos2,is.corr = FALSE)
 ```
 
 Toutes ses conclusions peuvent se résumer sur un cercle de corrélation coloré en fonction de la valeur du cos2.
 
-```{r}
+```{r} 
+# Cercle de corrélation des variables coloré en fonction du cos^2
 fviz_pca_var(res.pca, col.var = "cos2",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE)
@@ -67,14 +70,17 @@ fviz_pca_var(res.pca, col.var = "cos2",
 Par la suite on s’intéresse à la contribution des variables aux axes principaux. Les variables qui ne sont pas en corrélation avec un axe ou qui sont corrélées avec les derniers axes sont des variables à faible apport et peuvent être supprimées pour simplifier l’analyse globale. Plus la valeur de la contribution est importante, plus la variable contribue à la composante principale en question. La ligne rouge indique la contribution moyenne attendue dans le cas où la distribution des variables serait uniforme. Ainsi lorsque la contribution d’une variable est supérieure à ce seuil, cela signifie qu’elle peut être considérée comme importante pour contribuer à la composante.
 
 ```{r}
+# Contribution des variables à la dimension 1
 fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
 ```
 
 ```{r}
+# Contribution des variables à la dimension 2
 fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
 ```
 
 ```{r}
+# Cercle de corrélation des variables coloré en fontion de leur contribution aux dimensions
 fviz_pca_var(res.pca, col.var = "contrib",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE)
@@ -84,34 +90,42 @@ Nous avons ensuite poursuivi l’étude avec l’analyse des individus en commen
 représentation graphique en nuage de points.
 
 ```{r}
+# Nuage de points des individus 
 fviz_pca_ind (res.pca,repel = TRUE )
 ```
 
 ```{r, fig.cap="Sexe"}
+# Nuage de points des individus coloré en fonction du sexe
 fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$sex)
 ```
 
 ```{r, fig.cap="Blessure"}
+# Nuage de points des individus coloré en fonction des blessures
 fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$trail_injury_illness)
 ```
 
 ```{r, fig.cap="Coach"}
+# Nuage de points des individus coloré en fonction du fait d'avoir un coach ou non
 fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$coach_for_trail)
 ```
 
 ```{r, fig.cap="Course"}
+# Nuage de points des individus coloré en fonction de la course effectuée
 fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$which_races_UT4M_2023)
 ```
 
 ```{r, fig.cap="Abandon"}
+# Nuage de points des individus coloré en fonction du résultat de la course
 fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$do_not_finish)
 ```
 
 ```{r, fig.cap="Catégorie"}
+# Nuage de points des individus coloré en fonction de la catégorie du coureur
 fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$category)
 ```
 
 ```{r, fig.cap="Moitié du classement"}
+# Nuage de points des individus coloré en fonction de la moitié du classement
 data$half_result = as.integer(data$Scratch_total/2)
 data$performance_2 = data$scratch
 data$performance_2 <- ifelse(data$performance_2 <= data$half_result, 1, 2)
@@ -120,6 +134,7 @@ fviz_pca_ind (res.pca,repel = TRUE,col.ind = data$performance_2)
 ```
 
 ```{r, fig.cap="Quart du classement"}
+# Nuage de points des individus coloré en fonction du quart du classement
 data$first_quarter = as.integer(data$Scratch_total/4)
 data$second_quarter = as.integer(data$Scratch_total/2)
 data$third_quarter = as.integer(data$Scratch_total/4*3)
@@ -136,6 +151,7 @@ Comme pour les variables, on peut étudier le cosinus carré et la contribution 
 1/n.
 
 ```{r}
+# COntribution des individus aux dimensions
 fviz_contrib(res.pca, choice = "ind", axes = 1:2)
 
 ```
@@ -143,6 +159,7 @@ fviz_contrib(res.pca, choice = "ind", axes = 1:2)
 Comme les variables, il est également possible de colorer les individus en fonction de leurs valeurs de cos2.
 
 ```{r}
+# Nuage de point des individus coloré en fonction du cos^2
 fviz_pca_ind (res.pca, col.ind = "cos2",
               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
               repel = TRUE )
@@ -151,6 +168,7 @@ fviz_pca_ind (res.pca, col.ind = "cos2",
 Enfin nous avons réalisé un biplot des individus croisés avec les variables dans les dimensions 1 et 2.
 
 ```{r}
+# Nuage de point des individus croisé avec les variables
 fviz_pca_biplot(res.pca, repel = TRUE,
                 col.var = "#2E9FDF", 
                 col.ind = "#696969"  
