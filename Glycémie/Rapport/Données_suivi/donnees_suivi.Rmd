@@ -196,6 +196,7 @@ data_160 <- data[data$race == "160 km",]
 ## Qualité du sommeil
 
 ```{r}
+# Représentation graphique de la qualité du sommeil en fonction du temps
 ggplot(data, aes(x = day, y = sleep_quality, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -211,6 +212,7 @@ ggplot(data, aes(x = day, y = sleep_quality, color = factor(participant_number),
 ```
 
 ```{r}
+# Représentation graphique de la qualité du sommeil en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = sleep_quality, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -226,6 +228,7 @@ ggplot(data_100, aes(x = day, y = sleep_quality, color = factor(participant_numb
 
 
 ```{r}
+# Représentation graphique de la qualité du sommeil en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = sleep_quality, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -242,10 +245,16 @@ ggplot(data_160, aes(x = day, y = sleep_quality, color = factor(participant_numb
 ### Autres analyses
 
 ```{r}
+# Collecte des données de la nuit 7 jours avant la course
 data_j7 <- data[data$day == "13/07/2023",]
+
+# Analyse statistique de la qualité du sommeil en fonction de la course 7 jours avant le départ
 p_val_course_j7 <- t.test(sleep_quality ~ race, data = data_j7)$p.value
+
+# Analyse statistique de la qualité du sommeil en fonction du résultat de la course 7 jours avant le départ
 p_val_resultat_j7 <- t.test(sleep_quality ~ finisher, data = data_j7)$p.value
 
+# Représentation graphique de la qualité du sommeil en fonction de la course 7 jours avant le départ
 graph_course_j7 <- ggplot(data_j7, aes(x = race, y = sleep_quality, fill = race)) +
   geom_boxplot() +
   labs(x = "Course", y = "Qualité du sommeil") +
@@ -254,6 +263,7 @@ graph_course_j7 <- ggplot(data_j7, aes(x = race, y = sleep_quality, fill = race)
   ggtitle("7 jours avant la course")+ 
   ylim(0, 100) 
 
+# Représentation graphique de la qualité du sommeil en fonction du résultat de la course 7 jours avant le départ
 graph_resultat_j7 <- ggplot(data_j7, aes(x = finisher, y = sleep_quality, fill = finisher)) +
   geom_boxplot() +
   labs(x = "Résultat", y = "Qualité du sommeil") +
@@ -262,11 +272,17 @@ graph_resultat_j7 <- ggplot(data_j7, aes(x = finisher, y = sleep_quality, fill =
   ggtitle("7 jours avant la course")+ 
   ylim(0, 100) 
 
+# Collecte des données de la nuit avant la course
 data$dep_race <- ifelse(data$race == "100 km", "22/07/2023","21/07/2023")
 data_jj <- data[data$day == data$dep_race,]
+
+# Analyse statistique de la qualité du sommeil en fonction de la course la nuit avant le départ
 p_val_course_jj <- t.test(sleep_quality ~ race, data = data_jj)$p.value
+
+# Analyse statistique de la qualité du sommeil en fonction du résultat de la course la nuit avant le départ
 p_val_resultat_jj <- t.test(sleep_quality ~ finisher, data = data_jj)$p.value
 
+# Représentation graphique de la qualité du sommeil en fonction de la course la nuit avant le départ
 graph_course_jj <- ggplot(data_jj, aes(x = race, y = sleep_quality, fill = race)) +
   geom_boxplot() +
   labs(x = "Course", y = "Qualité du sommeil", fill = "Course effectuée") +
@@ -274,6 +290,7 @@ graph_course_jj <- ggplot(data_jj, aes(x = race, y = sleep_quality, fill = race)
   ggtitle("Nuit avant la course")+ 
   ylim(0, 100) 
 
+# Représentation graphique de la qualité du sommeil en fonction du résultat de la course la nuit avant le départ
 graph_resultat_jj <- ggplot(data_jj, aes(x = finisher, y = sleep_quality, fill = finisher)) +
   geom_boxplot() +
   labs(x = "Résultat", y = "Qualité du sommeil", fill = "Résultat de la course") +
@@ -281,11 +298,13 @@ graph_resultat_jj <- ggplot(data_jj, aes(x = finisher, y = sleep_quality, fill =
   ggtitle("Nuit avant la course")+ 
   ylim(0, 100) 
 
-
+# Graphique de qualité du sommeil en fonction de la course effectuée
 grid.arrange(graph_course_j7, graph_course_jj, ncol = 2)
 
+# Graphique de qualité du sommeil en fonction du résultat
 grid.arrange(graph_resultat_j7, graph_resultat_jj, ncol = 2)
 
+# Résultats des tests mis en forme
 col_1 <- c("Qualité du sommeil 7 jours avant la course ~ Course effectuée", "Qualité du sommeil la nuit avant la course ~ Course effectuée", "Qualité du sommeil 7 jours avant la course ~ Résultat du coureur", "Qualité du sommeil la nuit avant la course ~ Résultat du coureur")
 col_2 <- c(p_val_course_j7, p_val_course_jj, p_val_resultat_j7, p_val_resultat_jj)
 df <- data.frame(col_1, round(col_2,2))
@@ -294,13 +313,11 @@ gt(df)
 ```
 
 
-#### MM qualité du sommeil par rapport à la date
-
 ```{r}
 # Retrait de la nuit mixte du 23 avec des coureurs ayant fini et d'autres pas
 data_100 <- data_100[data_100$day != "23/07/2023",]
 
-# Coureurs du 100km
+# Modèle mixte de la qualité du sommeil en fonction de la date des coureurs du 100km
 mod_100 <- lmer(sleep_quality ~ day + (1| participant_number), data = data_100)
 ```
 
@@ -327,7 +344,7 @@ data_160 <- data_160[data_160$day != "23/07/2023",]
 data_160 <- data_160[data_160$day != "22/07/2023",]
 data_160 <- data_160[data_160$day != "29/07/2023",]
 
-# Coureurs du 160 km
+# Modèle mixte de la qualité du sommeil en fonction de la date des coureurs du 160km
 mod_160 <- lmer(sleep_quality ~ day + (1| participant_number), data = data_160)
 ```
 
@@ -348,82 +365,10 @@ tableau_160
 plot_model(mod_160, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 160 km")
 ```
 
-#### MM qualité du sommeil par rapport à la date + statut
-
-```{r}
-# Coureurs du 100km
-mod_100_statut <- lmer(sleep_quality ~ day + finisher + (1| participant_number), data = data_100)
-```
-
-```{r}
-# Test de la significativité de l'effet aléatoire
-ranova(mod_100_statut)
-```
-
-```{r}
-# Tableau des coefficients
-df_100_statut <- as.data.frame(summary(mod_100_statut)$coefficients)
-tableau_100_statut = df_100_statut %>% gt(rowname_col = "rownames(df_100_statut)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 100 km")
-tableau_100_statut
-```
-
-```{r}
-# Représentation graphique des coefficients du modèle
-plot_model(mod_100_statut, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 100 km")
-```
-
-
-```{r}
-# Coureurs du 160 km
-mod_160_statut <- lmer(sleep_quality ~ day + finisher + (1| participant_number), data = data_160)
-```
-
-```{r}
-# Test de la significativité de l'effet aléatoire
-ranova(mod_160_statut)
-```
-
-```{r}
-# Tableau des coefficients
-df_160_statut <- as.data.frame(summary(mod_160_statut)$coefficients)
-tableau_160_statut = df_160_statut %>% gt(rowname_col = "rownames(df_160_statut)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 160 km")
-tableau_160_statut
-```
-
-```{r}
-# Représentation graphique des coefficients du modèle
-plot_model(mod_160_statut, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 160 km")
-```
-
-#### MM qualité du sommeil par rapport à la date + course
-
-```{r}
-# Coureurs du 100km
-mod_course <- lmer(sleep_quality ~ day + race + (1| participant_number), data = data)
-```
-
-```{r}
-# Test de la significativité de l'effet aléatoire
-ranova(mod_course)
-```
-
-```{r}
-# Tableau des coefficients
-df_course <- as.data.frame(summary(mod_course)$coefficients)
-tableau_course = df_course %>% gt(rowname_col = "rownames(df_course)") %>% tab_header(title = "Coefficients du modèle pour les coureurs du 100 km")
-tableau_course
-```
-
-```{r}
-# Représentation graphique des coefficients du modèle
-plot_model(mod_course, vline.color = "black",  show.values = TRUE, value.offset = .3, axis.title = "Coefficients") + theme_bw() + ggtitle("Qualité du sommeil des coureurs du 100 km")
-```
-
-
-
 ## Heure du coucher
 
 ```{r}
+# Représentation graphique de l'heure du coucher en fonction du temps
 ggplot(data, aes(x = day, y = time_to_fall_asleep, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -438,6 +383,7 @@ ggplot(data, aes(x = day, y = time_to_fall_asleep, color = factor(participant_nu
 ```
 
 ```{r}
+# Représentation graphique de l'heure du coucher en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = time_to_fall_asleep, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -452,6 +398,7 @@ ggplot(data_100, aes(x = day, y = time_to_fall_asleep, color = factor(participan
 ```
 
 ```{r}
+# Représentation graphique de l'heure du coucher en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = time_to_fall_asleep, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -468,6 +415,7 @@ ggplot(data_160, aes(x = day, y = time_to_fall_asleep, color = factor(participan
 ## Heure du reveil
 
 ```{r}
+# Représentation graphique de l'heure du réveil en fonction du temps
 ggplot(data, aes(x = day, y = wake_up_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -482,6 +430,7 @@ ggplot(data, aes(x = day, y = wake_up_time, color = factor(participant_number), 
 ```
 
 ```{r}
+# Représentation graphique de l'heure du réveil en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = wake_up_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -498,6 +447,7 @@ ggplot(data_100, aes(x = day, y = wake_up_time, color = factor(participant_numbe
 
 
 ```{r}
+# Représentation graphique de l'heure du réveil en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = wake_up_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -514,6 +464,7 @@ ggplot(data_160, aes(x = day, y = wake_up_time, color = factor(participant_numbe
 ## Entraînement
 
 ```{r}
+# Représentation graphique de l'entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Entraînement en fonction de la date") +
@@ -527,6 +478,7 @@ ggplot(data, aes(x = day, fill = factor(training))) +
 ```
 
 ```{r}
+# Représentation graphique de l'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Entraînement en fonction de la date des coureurs du 100km") +
@@ -541,6 +493,7 @@ ggplot(data_100, aes(x = day, fill = factor(training))) +
 
 
 ```{r}
+# Représentation graphique de l'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Entraînement en fonction de la date des coureurs du 160km") +
@@ -556,6 +509,7 @@ ggplot(data_160, aes(x = day, fill = factor(training))) +
 ## Sport effectué
 
 ```{r}
+# Représentation graphique du sport effectué en fonction du temps
 ggplot(data, aes(x = day, fill = factor(sport))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Sport effectué en fonction de la date") +
@@ -569,6 +523,7 @@ ggplot(data, aes(x = day, fill = factor(sport))) +
 ```
 
 ```{r}
+# Représentation graphique du sport effectué en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(sport))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Sport effectué en fonction de la date des coureurs du 100km") +
@@ -582,6 +537,7 @@ ggplot(data_100, aes(x = day, fill = factor(sport))) +
 ```
 
 ```{r}
+# Représentation graphique du sport effectué en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(sport))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Sport effectué en fonction de la date des coureurs du 160km") +
@@ -597,6 +553,7 @@ ggplot(data_160, aes(x = day, fill = factor(sport))) +
 ## Heure de début de l'entraînement
 
 ```{r}
+# Représentation graphique de l'heure de début d'entraînement en fonction du temps
 ggplot(data, aes(x = day, y = training_start_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -611,6 +568,7 @@ ggplot(data, aes(x = day, y = training_start_time, color = factor(participant_nu
 ```
 
 ```{r}
+# Représentation graphique de l'heure de début d'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = training_start_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -626,6 +584,7 @@ ggplot(data_100, aes(x = day, y = training_start_time, color = factor(participan
 
 
 ```{r}
+# Représentation graphique de l'heure de début d'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = training_start_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -642,6 +601,7 @@ ggplot(data_160, aes(x = day, y = training_start_time, color = factor(participan
 ## Heure de fin de l'entraînement
 
 ```{r}
+# Représentation graphique de l'heure de fin d'entraînement en fonction du temps
 ggplot(data, aes(x = day, y = training_end_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -656,6 +616,7 @@ ggplot(data, aes(x = day, y = training_end_time, color = factor(participant_numb
 ```
 
 ```{r}
+# Représentation graphique de l'heure de fin d'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = training_end_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -671,6 +632,7 @@ ggplot(data_100, aes(x = day, y = training_end_time, color = factor(participant_
 
 
 ```{r}
+# Représentation graphique de l'heure de fin d'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = training_end_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -683,9 +645,11 @@ ggplot(data_160, aes(x = day, y = training_end_time, color = factor(participant_
   annotate("text", x = "22/07/2023", y = "21:00", label = "Pendant \n la \n course", vjust = 1, hjust = 0.5, color = "red") +
   annotate("text", x = "24/07/2023", y = "21:00",label = "Après la course", vjust = 1, hjust = -0.5, color = "black")
 ```
+
 ## Thème de l'entraînement
 
 ```{r}
+# Représentation graphique du thème d'entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(training_theme))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Thème de l'entraînement en fonction de la date") +
@@ -699,6 +663,7 @@ ggplot(data, aes(x = day, fill = factor(training_theme))) +
 ```
 
 ```{r}
+# Représentation graphique du thème d'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(training_theme))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Thème de l'entraînement en fonction de la date des coureurs du 100km") +
@@ -712,6 +677,7 @@ ggplot(data_100, aes(x = day, fill = factor(training_theme))) +
 ```
 
 ```{r}
+# Représentation graphique du thème d'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(training_theme))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Thème de l'entraînement en fonction de la date des coureurs du 160km") +
@@ -727,6 +693,7 @@ ggplot(data_160, aes(x = day, fill = factor(training_theme))) +
 ## Perception de l'effort
 
 ```{r}
+# Représentation graphique de la perception de l'effort en fonction du temps
 ggplot(data, aes(x = day, fill = factor(perception_of_effort))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Perception de l'effort en fonction de la date") +
@@ -740,6 +707,7 @@ ggplot(data, aes(x = day, fill = factor(perception_of_effort))) +
 ```
 
 ```{r}
+# Représentation graphique de la perception de l'effort en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(perception_of_effort))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Perception de l'effort en fonction de la date des coureurs du 100km") +
@@ -753,6 +721,7 @@ ggplot(data_100, aes(x = day, fill = factor(perception_of_effort))) +
 ```
 
 ```{r}
+# Représentation graphique de la perception de l'effort en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(perception_of_effort))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Perception de l'effort en fonction de la date des coureurs du 160km") +
@@ -768,6 +737,7 @@ ggplot(data_160, aes(x = day, fill = factor(perception_of_effort))) +
 ## Distance parcourue
 
 ```{r}
+# Représentation graphique de la distance parcourue en fonction du temps
 ggplot(data, aes(x = day, y = distance_covered, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -782,6 +752,7 @@ ggplot(data, aes(x = day, y = distance_covered, color = factor(participant_numbe
 ```
 
 ```{r}
+# Représentation graphique de la distance parcourue en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = distance_covered, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -796,6 +767,7 @@ ggplot(data_100, aes(x = day, y = distance_covered, color = factor(participant_n
 ```
 
 ```{r}
+# Représentation graphique de la distance parcourue en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = distance_covered, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -813,6 +785,7 @@ ggplot(data_160, aes(x = day, y = distance_covered, color = factor(participant_n
 ## Dénivelé effectué
 
 ```{r}
+# Représentation graphique du dénivelé effectué en fonction du temps
 ggplot(data, aes(x = day, y = vertical_drop, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -827,6 +800,7 @@ ggplot(data, aes(x = day, y = vertical_drop, color = factor(participant_number),
 ```
 
 ```{r}
+# Représentation graphique du dénivelé effectué en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = vertical_drop, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -841,6 +815,7 @@ ggplot(data_100, aes(x = day, y = vertical_drop, color = factor(participant_numb
 ```
 
 ```{r}
+# Représentation graphique du dénivelé effectué en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = vertical_drop, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -857,6 +832,7 @@ ggplot(data_160, aes(x = day, y = vertical_drop, color = factor(participant_numb
 ## Manger lors de l'entraînement
 
 ```{r}
+# Représentation graphique de la prise d'alimentation à l'entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(eat_during_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Manger lors de l'entraînement en fonction de la date") +
@@ -870,6 +846,7 @@ ggplot(data, aes(x = day, fill = factor(eat_during_training))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'alimentation à l'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(eat_during_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Manger lors de l'entraînement en fonction de la date des coureurs du 100km") +
@@ -883,6 +860,7 @@ ggplot(data_100, aes(x = day, fill = factor(eat_during_training))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'alimentation à l'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(eat_during_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Manger lors de l'entraînement en fonction de la date des coureurs du 160km") +
@@ -898,6 +876,7 @@ ggplot(data_160, aes(x = day, fill = factor(eat_during_training))) +
 ## Boire lors de l'entraînement
 
 ```{r}
+# Représentation graphique de l'hydratation à l'entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(drink_during_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Boire lors de l'entraînement en fonction de la date") +
@@ -911,6 +890,7 @@ ggplot(data, aes(x = day, fill = factor(drink_during_training))) +
 ```
 
 ```{r}
+# Représentation graphique de l'hydratation à l'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(drink_during_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Boire lors de l'entraînement en fonction de la date des coureurs du 100km") +
@@ -924,6 +904,7 @@ ggplot(data_100, aes(x = day, fill = factor(drink_during_training))) +
 ```
 
 ```{r}
+# Représentation graphique de l'hydratation à l'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(drink_during_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Boire lors de l'entraînement en fonction de la date des coureurs du 160km") +
@@ -939,6 +920,7 @@ ggplot(data_160, aes(x = day, fill = factor(drink_during_training))) +
 ## Type de boisson
 
 ```{r}
+# Représentation graphique du type d'hydratation à l'entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(type_of_drink))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Type de boisson en fonction de la date") +
@@ -952,6 +934,7 @@ ggplot(data, aes(x = day, fill = factor(type_of_drink))) +
 ```
 
 ```{r}
+# Représentation graphique du type d'hydratation à l'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(type_of_drink))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Type de boisson en fonction de la date des coureurs du 100km") +
@@ -965,6 +948,7 @@ ggplot(data_100, aes(x = day, fill = factor(type_of_drink))) +
 ```
 
 ```{r}
+# Représentation graphique du type d'hydratation à l'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(type_of_drink))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Type de boisson en fonction de la date des coureurs du 160km") +
@@ -980,6 +964,7 @@ ggplot(data_160, aes(x = day, fill = factor(type_of_drink))) +
 ## Volume de boisson
 
 ```{r}
+# Représentation graphique du volume d'hydratation à l'entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(amount_of_hydration))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Quantité bu en fonction de la date") +
@@ -993,6 +978,7 @@ ggplot(data, aes(x = day, fill = factor(amount_of_hydration))) +
 ```
 
 ```{r}
+# Représentation graphique du volume d'hydratation à l'entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(amount_of_hydration))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Quantité bu en fonction de la date des coureurs du 100km") +
@@ -1006,6 +992,7 @@ ggplot(data_100, aes(x = day, fill = factor(amount_of_hydration))) +
 ```
 
 ```{r}
+# Représentation graphique du volume d'hydratation à l'entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(amount_of_hydration))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Quantité bu en fonction de la date des coureurs du 160km") +
@@ -1021,6 +1008,7 @@ ggplot(data_160, aes(x = day, fill = factor(amount_of_hydration))) +
 ## Second entraînement
 
 ```{r}
+# Représentation graphique d'un second entraînement en fonction du temps
 ggplot(data, aes(x = day, fill = factor(second_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Second entraînement en fonction de la date") +
@@ -1034,6 +1022,7 @@ ggplot(data, aes(x = day, fill = factor(second_training))) +
 ```
 
 ```{r}
+# Représentation graphique d'un second entraînement en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(second_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Second entraînement en fonction de la date des coureurs du 100km") +
@@ -1047,6 +1036,7 @@ ggplot(data_100, aes(x = day, fill = factor(second_training))) +
 ```
 
 ```{r}
+# Représentation graphique d'un second entraînement en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(second_training))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Second entraînement en fonction de la date des coureurs du 160km") +
@@ -1062,6 +1052,7 @@ ggplot(data_160, aes(x = day, fill = factor(second_training))) +
 ## Petit déjeuner
 
 ```{r}
+# Représentation graphique de la prise d'un petit-déjeuner en fonction du temps
 ggplot(data, aes(x = day, fill = factor(breakfast))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un petit déjeuner en fonction de la date") +
@@ -1075,6 +1066,7 @@ ggplot(data, aes(x = day, fill = factor(breakfast))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'un petit-déjeuner en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(breakfast))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un petit déjeuner en fonction de la date des coureurs du 100km") +
@@ -1088,6 +1080,7 @@ ggplot(data_100, aes(x = day, fill = factor(breakfast))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'un petit-déjeuner en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(breakfast))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un petit déjeuner en fonction de la date des coureurs du 160km") +
@@ -1103,6 +1096,7 @@ ggplot(data_160, aes(x = day, fill = factor(breakfast))) +
 ## Heure du petit déjeuner
 
 ```{r}
+# Représentation graphique de l'heure de la prise du petit-déjeuner en fonction du temps
 ggplot(data, aes(x = day, y = breakfast_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1117,6 +1111,7 @@ ggplot(data, aes(x = day, y = breakfast_time, color = factor(participant_number)
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise du petit-déjeuner en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = breakfast_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1131,6 +1126,7 @@ ggplot(data_100, aes(x = day, y = breakfast_time, color = factor(participant_num
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise du petit-déjeuner en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = breakfast_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1147,6 +1143,7 @@ ggplot(data_160, aes(x = day, y = breakfast_time, color = factor(participant_num
 ## Colation matinale
 
 ```{r}
+# Représentation graphique de la prise d'une collation matinale en fonction du temps
 ggplot(data, aes(x = day, fill = factor(morning_snack))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation dans la matinée en fonction de la date") +
@@ -1160,6 +1157,7 @@ ggplot(data, aes(x = day, fill = factor(morning_snack))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'une collation matinale en fonction du temps des coureurs du 100km 
 ggplot(data_100, aes(x = day, fill = factor(morning_snack))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation dans la matinée en fonction de la date des coureurs du 100km") +
@@ -1173,6 +1171,7 @@ ggplot(data_100, aes(x = day, fill = factor(morning_snack))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'une collation matinale en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(morning_snack))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation dans la matinée en fonction de la date des coureurs du 160km") +
@@ -1188,6 +1187,7 @@ ggplot(data_160, aes(x = day, fill = factor(morning_snack))) +
 ## Heure de la colation matinale
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'une collation matinale en fonction du temps
 ggplot(data, aes(x = day, y = morning_snack_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1202,6 +1202,7 @@ ggplot(data, aes(x = day, y = morning_snack_time, color = factor(participant_num
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'une collation matinale en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = morning_snack_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1216,6 +1217,7 @@ ggplot(data_100, aes(x = day, y = morning_snack_time, color = factor(participant
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'une collation matinale en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = morning_snack_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1232,6 +1234,7 @@ ggplot(data_160, aes(x = day, y = morning_snack_time, color = factor(participant
 ## Déjeuner
 
 ```{r}
+# Représentation graphique de la prise d'un déjeuner en fonction du temps
 ggplot(data, aes(x = day, fill = factor(lunch))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un déjeuner en fonction de la date") +
@@ -1245,6 +1248,7 @@ ggplot(data, aes(x = day, fill = factor(lunch))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'un déjeuner en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(lunch))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un déjeuner en fonction de la date des coureurs du 100km") +
@@ -1258,6 +1262,7 @@ ggplot(data_100, aes(x = day, fill = factor(lunch))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'un déjeuner en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(lunch))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un déjeuner en fonction de la date des coureurs du 160km") +
@@ -1273,6 +1278,7 @@ ggplot(data_160, aes(x = day, fill = factor(lunch))) +
 ## Heure du déjeuner
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'un déjeuner en fonction du temps
 ggplot(data, aes(x = day, y = lunch_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1287,6 +1293,7 @@ ggplot(data, aes(x = day, y = lunch_time, color = factor(participant_number), gr
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'un déjeuner en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = lunch_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1301,6 +1308,7 @@ ggplot(data_100, aes(x = day, y = lunch_time, color = factor(participant_number)
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'un déjeuner en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = lunch_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1317,6 +1325,7 @@ ggplot(data_160, aes(x = day, y = lunch_time, color = factor(participant_number)
 ## Colation de l'après-midi
 
 ```{r}
+# Représentation graphique de la prise d'une collation dans l'après-midi en fonction du temps
 ggplot(data, aes(x = day, fill = factor(afternoon_snack))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation l'après-midi en fonction de la date") +
@@ -1330,6 +1339,7 @@ ggplot(data, aes(x = day, fill = factor(afternoon_snack))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'une collation dans l'après-midi en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(afternoon_snack))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation l'après-midi en fonction de la date des coureurs du 100km") +
@@ -1343,6 +1353,7 @@ ggplot(data_100, aes(x = day, fill = factor(afternoon_snack))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'une collation dans l'après-midi en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(afternoon_snack))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'une collation l'après-midi en fonction de la date des coureurs du 160km") +
@@ -1358,6 +1369,7 @@ ggplot(data_160, aes(x = day, fill = factor(afternoon_snack))) +
 ## Diner
 
 ```{r}
+# Représentation graphique de la prise d'un diner en fonction du temps
 ggplot(data, aes(x = day, fill = factor(dinner))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un diner en fonction de la date") +
@@ -1371,6 +1383,7 @@ ggplot(data, aes(x = day, fill = factor(dinner))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'un diner en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, fill = factor(dinner))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un diner en fonction de la date des coureurs du 100km") +
@@ -1384,6 +1397,7 @@ ggplot(data_100, aes(x = day, fill = factor(dinner))) +
 ```
 
 ```{r}
+# Représentation graphique de la prise d'un diner en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, fill = factor(dinner))) +
   geom_bar(position = "dodge", width = 0.7) +
   labs(x = "Date", y = "Nombre de personne", title = "Prise d'un diner en fonction de la date des coureurs du 160km") +
@@ -1399,6 +1413,7 @@ ggplot(data_160, aes(x = day, fill = factor(dinner))) +
 ## Heure du diner
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'un diner en fonction du temps
 ggplot(data, aes(x = day, y = dinner_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1413,6 +1428,7 @@ ggplot(data, aes(x = day, y = dinner_time, color = factor(participant_number), g
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'un diner en fonction du temps des coureurs du 100km
 ggplot(data_100, aes(x = day, y = dinner_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
@@ -1427,6 +1443,7 @@ ggplot(data_100, aes(x = day, y = dinner_time, color = factor(participant_number
 ```
 
 ```{r}
+# Représentation graphique de l'heure de la prise d'un diner en fonction du temps des coureurs du 160km
 ggplot(data_160, aes(x = day, y = dinner_time, color = factor(participant_number), group = participant_number)) +
   geom_line() +
   geom_point() +
