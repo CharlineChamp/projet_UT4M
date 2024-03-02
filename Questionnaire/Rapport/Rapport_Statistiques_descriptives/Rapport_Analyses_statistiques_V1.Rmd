@@ -1,0 +1,651 @@
+---
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: header.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment = "#>", fig.width=9, fig.height=6, eval=TRUE, echo=FALSE, results="verbatim", warning=FALSE)
+```
+
+```{r packages, include=FALSE}
+library(readxl)
+library(dplyr)
+library(gtsummary)
+library(forcats)
+library(knitr)
+library(stringr)
+```
+
+\newpage
+\tableofcontents
+\newpage
+
+```{r warning=FALSE, include=FALSE}
+# Chargement des données 
+
+data <- read_excel("../../Donnée/dataset_V6.xlsx", sheet = "Sans NA")
+
+# Mise en forme des données
+data2 = data[-c(1,7,10,11,26,28,29,31,33,35,38,39,43,44)]
+
+data2$sex <- as.factor(data2$sex)
+data2$weekly_volume_profession <- as.factor(data2$weekly_volume_profession)
+data2$weekly_volume_profession <- ordered(data2$weekly_volume_profession,
+                                         levels = c("⩽ 35 heures / semaine" ,
+                                                "entre 36 et 45 heures / semaine",
+                                                    "⩾ 45h / semaine" ))
+data2$start_trail <- as.factor(data2$start_trail)
+data2$start_trail <- ordered(data2$start_trail, 
+                            levels = c("< 2 ans"  ,
+                                       "Entre 2 et 5 ans",
+                                       "Entre 5 et 10 ans",
+                                       "> 10 ans"))
+data2$time_proportion_other_practice <- as.factor(data2$time_proportion_other_practice)
+data2$time_proportion_other_practice <- ordered(data2$time_proportion_other_practice, 
+                                               levels = c("< 20%",
+                                                          "Entre 20% et 50%",
+                                                          "> 50%"))
+data2$coach_for_trail = as.factor(data2$coach_for_trail)
+data2$heart_rate_monitor_train = as.factor(data2$heart_rate_monitor_train)
+data2$heart_rate_monitor_competition = as.factor(data2$heart_rate_monitor_competition)
+data2$connected_platform = as.factor(data2$connected_platform)
+data2$ITRA_rating_know = as.factor(data2$ITRA_rating_know)
+data2$number_hours_practice_trail_phase_preparation = as.factor(data2$number_hours_practice_trail_phase_preparation)
+data2$number_hours_practice_trail_phase_preparation = factor(data2$number_hours_practice_trail_phase_preparation,levels=c(
+  '⩽ 3 heures / semaine','Entre 3h et 7h / semaine','Entre 7h et 12h / semaine','> 12 heures / semaine'))
+data2$drop_practice_trail_phase_preparation = as.factor(data2$drop_practice_trail_phase_preparation)
+data2$drop_practice_trail_phase_preparation = factor(data2$drop_practice_trail_phase_preparation,levels=c('< 1000m / semaine','Entre 1000m et 2000m / semaine', '> 2000m / semaine'))
+data2$kilometres_practice_trail_phase_preparation = as.factor(data2$kilometres_practice_trail_phase_preparation)
+data2$kilometres_practice_trail_phase_preparation = factor(data2$kilometres_practice_trail_phase_preparation,levels=c(
+  '< 20km / semaine','Entre 20km et 50km / semaine','Entre 50km et 80km / semaine','> 80km / semaine'))
+data2$number_hours_training_trail_phase_preparation = as.factor(data2$number_hours_training_trail_phase_preparation)
+data2$number_hours_training_trail_phase_preparation = factor(data2$number_hours_training_trail_phase_preparation,levels=c(
+  '⩽ 3 heures / semaine','Entre 3h et 7h / semaine','Entre 7h et 12h / semaine','> 12 heures / semaine'))
+data2$trail_participation_last_two_seasons=as.factor(data2$trail_participation_last_two_seasons)
+data2$distance_trail_participation_last_two_seasons=as.factor(data2$distance_trail_participation_last_two_seasons)
+data2$distance_trail_participation_last_two_seasons=fct_relevel(data2$distance_trail_participation_last_two_seasons, c("< 40km", "De 40km à 80km", "> 80km"))
+data2$frequence_trail_participation_last_two_seasons_by_season=as.factor(data2$frequence_trail_participation_last_two_seasons_by_season)
+data2$frequence_trail_participation_last_two_seasons_by_season=fct_relevel(data2$frequence_trail_participation_last_two_seasons_by_season, 
+                                                                         c("1 à 3 courses / saison", "4 à 8 courses / saison", "> 8 courses / saison"))
+data2$diet=as.factor(data2$diet)
+data2$volume_drink_during_training=as.factor(data2$volume_drink_during_training)
+data2$volume_drink_during_competition=as.factor(data2$volume_drink_during_competition)
+data2$frequence_hours_eat_during_training <- as.factor(data2$frequence_hours_eat_during_training)
+data2$frequence_hours_eat_during_training <- ordered(data2$frequence_hours_eat_during_training, 
+                                                    levels = c("< 1x / heure",
+                                                               "1x ou 2x / heure",
+                                                               "> 2x / heure"))
+data2$frequence_hours_eat_during_competition <- as.factor(data2$frequence_hours_eat_during_competition)
+data2$frequence_hours_eat_during_competition <- ordered(data2$frequence_hours_eat_during_competition, 
+                                                       levels = c("< 1x / heure",
+                                                                  "1x ou 2x / heure",
+                                                                  "> 2x / heure"))
+data2$trail_injury_illness <- as.factor(data2$trail_injury_illness)
+data2$trail_injury_illness <- ordered(data2$trail_injury_illness, 
+                                     levels = c("Oui",
+                                                "Non"))
+data2$trail_health_problem_involve_no_training <- as.factor(data2$trail_health_problem_involve_no_training)
+data2$trail_health_problem_involve_no_training <- ordered(data2$trail_health_problem_involve_no_training, 
+                                                         levels = c("Oui",
+                                                                    "Non"))
+data2$time_trail_health_problem_involve_no_training <- as.factor(data2$time_trail_health_problem_involve_no_training)
+data2$time_trail_health_problem_involve_no_training <- ordered(data2$time_trail_health_problem_involve_no_training, 
+                                                              levels = c("< 2 semaines",
+                                                                         "2 à 4 semaines",
+                                                                         "5 à 8 semaines",
+                                                                         "> 8 semaines"))
+data2$frequence_medical_apointment_trail <- as.factor(data2$frequence_medical_apointment_trail)
+data2$frequence_medical_apointment_trail <- ordered(data2$frequence_medical_apointment_trail, 
+                                                   levels = c("< 2x / an",
+                                                              "2x à 6x / an",
+                                                              "> 6x / an"))
+data2$smoke <- as.factor(data2$smoke)
+data2$consistency <- as.numeric(data2$consistency)
+data2$do_not_finish <- as.factor(data2$do_not_finish)
+data2$do_not_finish <- ordered(data2$do_not_finish, levels = c("oui","non"))
+```
+
+# Général 
+
+Nous avons débuté notre analyse statistique en regardant les variables de manière générale.
+
+```{r general}
+# Tableau des statistiques générales des données
+data2%>% tbl_summary(missing_text = "(Données manquantes)",
+                     label = list(sex ~ "Sexe",
+                                  age ~ "Age",
+                                  weight ~ "Poids",
+                                  max_weight ~ "Poids maximal",
+                                  min_weight ~ "Poids minimal",
+                                  weekly_volume_profession ~ "Volume horaire consacré à la profession",
+                                  start_trail ~ "Nombre d'années de pratique du trail",
+                                  #other_practice ~ "",
+                                  time_proportion_other_practice ~ "Proportion de temps accordée à la pratique d'autres sports",
+                                  coach_for_trail ~ "Coach pour le trail",
+                                  heart_rate_monitor_train ~ "Port d'un cardiofréquencemètre en entrainement",
+                                  heart_rate_monitor_competition ~ "Port d'un cardiofréquencemètre en compétition",
+                                  connected_platform ~ "Téléchargement des données sur une plateforme connectée",
+                                  ITRA_rating ~ "Côte ITRA",
+                                  ITRA_rating_know ~ "Connaissance de la côte ITRA",
+                                  number_hours_practice_trail_phase_preparation ~ "Nombre d'heures d'entrainement en trail pour la préparation d'une course",
+                                  drop_practice_trail_phase_preparation ~ "Dénivelé lors des entrainements en trail pour la préparation d'une course ",
+                                  kilometres_practice_trail_phase_preparation ~ "Nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course",
+                                  number_hours_training_trail_phase_preparation ~ "Nombre d'heures d'entrainement pour la préparation d'une course",
+                                  trail_participation_last_two_seasons ~ "Participation à une ou plusieurs courses de trail lors des 2 dernières saisons",
+                                  distance_trail_participation_last_two_seasons ~ "Distance parcourue lors des dernières courses de trail", 
+                                  frequence_trail_participation_last_two_seasons_by_season ~ "Nombre de courses de trail par saison",
+                                  #which_races_UT4M_2023 ~ "",
+                                  diet ~ "Régime alimentaire",
+                                  #which_diet ~ "",
+                                  #which_drink_during_training ~ "",
+                                  volume_drink_during_training ~ "Volume de boisson pendant l'entraînement",
+                                  #which_drink_during_competition ~ "",
+                                  volume_drink_during_competition ~ "Volume de boisson pendant une compétition",
+                                  #which_eat_during_training ~ "",
+                                  frequence_hours_eat_during_training ~ "Fréquence d'alimentation à l'entraînement",
+                                  #which_eat_during_competition ~ "",
+                                  frequence_hours_eat_during_competition ~ "Fréquence d'alimentation en compétition",
+                                  trail_injury_illness ~ "Blessure ou maladie en lien avec la pratique du trail",
+                                  #trail_health_problem ~ "",
+                                  trail_health_problem_involve_no_training ~ "Problèmes de santé ayant empêché l'entraînement",
+                                  time_trail_health_problem_involve_no_training ~ "Durée d'impossibilité de s'entraîner",
+                                  frequence_medical_apointment_trail ~ "Fréquence des rendez-vous médicaux",
+                                  #reason_medical_apointment_trail ~ "",
+                                  #have_this_illness ~ "",
+                                  smoke ~ "Fumeur régulier",
+                                  fulfillment ~ "Epanouissement",
+                                  priority ~ "Priorités",
+                                  intrinsic_motivation ~ "Motivation intrinsèque",
+                                  identified_motivation ~ "Motivation identifiée",
+                                  integrated_motivation ~ "Motivation intégrée",
+                                  introjected_motivation ~ "Motivation introjectée",
+                                  external_motivation ~ "Motivation externe",
+                                  global_mental_force ~ "Force mentale globale",
+                                  confidence ~ "Confiance",
+                                  consistency ~ "Consistance",
+                                  control ~ "Contrôle",
+                                  general_internal_speech ~ "Discours interne",
+                                  training_internal_speech ~ "Discours interne lors de l'entraînement",
+                                  competition_internal_speech ~ "Discours interne lors de compétition",
+                                  general_precompetitive_anxiety ~ "Anxiété pré-compétitive",
+                                  somatic_anxiety ~ "Anxiété somatique",
+                                  cognitive_anxiety ~ "Anxiété cognitive",
+                                  harmonious_hobbies ~ "Passion harmonieuse",
+                                  obsessive_hobbies ~ "Passion obsessive",
+                                  addiction ~ "Addiction"),
+                     statistic = all_continuous() ~ "{mean} [{p25}, {p75}]",
+                     missing = "no")%>%
+  modify_header(label ~ "**Variable**")
+```
+
+De manière générale, on observe qu'il y a une grande majorité d'hommes qui pratiquent le trail.
+
+Le profil type du traileur qui ressort de ce questionnaire est une personne dont l'âge est compris entre 29 et 46 ans, dont le poids se situe entre 63 et 76 kg et qui travaille entre 36 et 45 heures par semaine.
+
+Au niveau de la pratique sportive, la majorité possède une expérience comprise entre 2 et 5 ans, pratique d'autres activités sportives à hauteur de 20% de leur temps d'entrainement, ne sont pas suivi par un coach, utilisent un cardiofréquencemètre ainsi qu'une plateforme connectée pour télécharger leurs données et ont une côte ITRA connue, située entre 460 et 585. Concernant l'entraînement, la majorité se préparent durant 3 à 7h par semaine, avec un dénivelé de 1000 à 2000m et sur 20 à 50km de distance en trail et en tous sport confondus entre 3 et 12h pour une course. Au sujet des courses, la majorité ont effectué 1 à 3 courses de moins de 80km par saison lors des deux dernières saisons.
+
+Si l'on s'intéresse à présent à l'alimentation et l'hydratation des traileurs, ce qui ressort est qu'une majorité d'entre eux ne suit pas de régime alimentaire particulier, consomme entre 250 et 500 mL d'eau à l'heure à une fréquence de 1 fois par heure en entraînement contre 1 à 2 fois par heure en compétition.
+
+Considérons maintenant la santé physique et mentale. La plupart des coureurs ne semblent pas se blesser en pratiquant le trail, se rendent à des rendez-vous médicaux moins de 2 fois par an et ne fument pas régulièrement.
+
+Pour terminer, constatons le profil psychologique global qui ressort de ces réponses. Dans l'ensemble, les traileurs semblent épanouis, ne pas placer le trail en priorité dans leur vie, être motivés pour de bonnes raisons à savoir le plaisir, les bénéfices et les valeurs de ce sports plutôt que par peur de sentir mal ou par la pression de leur entourage, ont plutôt confiance en eux et savent plutôt bien se contrôler, utilisent pas mal le discours interne, sont relativement peu anxieux, ont une passion harmonieuse du trail plutôt qu'obsessive mais sont cependant proches ou à risque de dépendance.
+
+# Sexe
+
+Nous avons ensuite réalisé une analyse statistique des différentes variables selon le sexe.
+
+```{r by_sex}
+# Tableau d'analyse statistique des données en fonction du sexe
+data2%>% tbl_summary(by = sex, 
+                     missing_text = "(Données manquantes)",
+                     label = list(age ~ "Age",
+                                  weight ~ "Poids",
+                                  max_weight ~ "Poids maximal",
+                                  min_weight ~ "Poids minimal",
+                                  weekly_volume_profession ~ "Volume horaire consacré à la profession",
+                                  start_trail ~ "Nombre d'années de pratique du trail",
+                                  #other_practice ~ "",
+                                  time_proportion_other_practice ~ "Proportion de temps accordée à la pratique d'autres sports",
+                                  coach_for_trail ~ "Coach pour le trail",
+                                  heart_rate_monitor_train ~ "Port d'un cardiofréquencemètre en entrainement",
+                                  heart_rate_monitor_competition ~ "Port d'un cardiofréquencemètre en compétition",
+                                  connected_platform ~ "Téléchargement des données sur une plateforme connectée",
+                                  ITRA_rating ~ "Côte ITRA",
+                                  ITRA_rating_know ~ "Connaissance de la côte ITRA",
+                                  number_hours_practice_trail_phase_preparation ~ "Nombre d'heures d'entrainement en trail pour la préparation d'une course",
+                                  drop_practice_trail_phase_preparation ~ "Dénivelé lors des entrainements en trail pour la préparation d'une course ",
+                                  kilometres_practice_trail_phase_preparation ~ "Nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course",
+                                  number_hours_training_trail_phase_preparation ~ "Nombre d'heures d'entrainement pour la préparation d'une course",
+                                  trail_participation_last_two_seasons ~ "Participation à une ou plusieurs courses de trail lors des 2 dernières saisons",
+                                  distance_trail_participation_last_two_seasons ~ "Distance parcourue lors des dernières courses de trail", 
+                                  frequence_trail_participation_last_two_seasons_by_season ~ "Nombre de courses de trail par saison",
+                                  #which_races_UT4M_2023 ~ "",
+                                  diet ~ "Régime alimentaire",
+                                  #which_diet ~ "",
+                                  #which_drink_during_training ~ "",
+                                  volume_drink_during_training ~ "Volume de boisson pendant l'entraînement",
+                                  #which_drink_during_competition ~ "",
+                                  volume_drink_during_competition ~ "Volume de boisson pendant une compétition",
+                                  #which_eat_during_training ~ "",
+                                  frequence_hours_eat_during_training ~ "Fréquence d'alimentation à l'entraînement",
+                                  #which_eat_during_competition ~ "",
+                                  frequence_hours_eat_during_competition ~ "Fréquence d'alimentation en compétition",
+                                  trail_injury_illness ~ "Blessure ou maladie en lien avec la pratique du trail",
+                                  #trail_health_problem ~ "",
+                                  trail_health_problem_involve_no_training ~ "Problèmes de santé ayant empêché l'entraînement",
+                                  time_trail_health_problem_involve_no_training ~ "Durée d'impossibilité de s'entraîner",
+                                  frequence_medical_apointment_trail ~ "Fréquence des rendez-vous médicaux",
+                                  #reason_medical_apointment_trail ~ "",
+                                  #have_this_illness ~ "",
+                                  smoke ~ "Fumeur régulier",
+                                  fulfillment ~ "Epanouissement",
+                                  priority ~ "Priorités",
+                                  intrinsic_motivation ~ "Motivation intrinsèque",
+                                  identified_motivation ~ "Motivation identifiée",
+                                  integrated_motivation ~ "Motivation intégrée",
+                                  introjected_motivation ~ "Motivation introjectée",
+                                  external_motivation ~ "Motivation externe",
+                                  global_mental_force ~ "Force mentale globale",
+                                  confidence ~ "Confiance",
+                                  consistency ~ "Consistance",
+                                  control ~ "Contrôle",
+                                  general_internal_speech ~ "Discours interne",
+                                  training_internal_speech ~ "Discours interne lors de l'entraînement",
+                                  competition_internal_speech ~ "Discours interne lors de compétition",
+                                  general_precompetitive_anxiety ~ "Anxiété pré-compétitive",
+                                  somatic_anxiety ~ "Anxiété somatique",
+                                  cognitive_anxiety ~ "Anxiété cognitive",
+                                  harmonious_hobbies ~ "Passion harmonieuse",
+                                  obsessive_hobbies ~ "Passion obsessive",
+                                  addiction ~ "Addiction"),
+                     statistic = all_continuous() ~ "{mean} [{p25}, {p75}]",
+                     missing = "no")%>%
+  add_p()  %>%
+  add_overall(col_label= "**Tous**, N = {N}")  %>%
+  modify_header(label ~ "**Variable**", p.value = "**P-valeur**")
+```
+
+À travers cette comparaison homme/femme, on observe que les femmes qui pratiquent le trail sont légèrement plus jeunes que les hommes et plus légères.
+
+Concernant le nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course les femmes s'entrainent moins de 80km par semaine et les hommes s'entrainent plutôt entre 20 et plus de 80km par semaine.Pour celles et ceux qui ont réalisé dernierement des courses de trail, les femmes ont parcourus des distances plus petites que les hommes.
+
+Si l'on s'intéresse à présent à l'alimentation et à l'hydratation, on observe que plus de femmes que d'hommes suivent un régime alimentaire, que les femmes boivent moins que les hommes de manière générale.
+
+Pour terminer, on s'intéresse au profil psychologique homme/femme. À ce sujet, hormis le contrôle et l'anxiété somatique, rien ne semble se dégager de cette comparaison. Pour ces deux variables, il apparait que les femmes se contrôlent globalement mieux que les hommes mais ont tendance à avoir une anxiété somatique plus élévée.
+
+# Côte ITRA
+
+La cote ITRA est l’indice de performance en trail le plus connu. Elle sert à établir le classement de référence en trail, mais aussi à comparer ses propres performances en trail. Lors de chaque trail, l’International Trail Running Association (ITRA) calcule pour chaque coureur une cote en fonction de la performance réalisée. La valeur maximale de la cote ITRA est de 1000 points. Ce nombre de points correspond à une performance maximale théorique, l’équivalent d’un record du monde comme la barrière des 2 heures au marathon. Pour établir cet indice, l’ITRA utilise la distance et le dénivelé communiqué par l’organisateur du trail. Une “distance à plat” est estimée en additionnant la distance et le dénivelé positif. Seul le chrono final est pris en compte dans le calcul de la cote ITRA, le classement n’a donc pas d’importance.La cote ITRA est l’indice de performance en trail le plus connu. Elle sert à établir le classement de référence en trail, mais aussi à comparer ses propres performances en trail. Lors de chaque trail, l’International Trail Running Association (ITRA) calcule pour chaque coureur une cote en fonction de la performance réalisée. La valeur maximale de la cote ITRA est de 1000 points. Ce nombre de points correspond à une performance maximale théorique, l’équivalent d’un record du monde comme la barrière des 2 heures au marathon. Pour établir cet indice, l’ITRA utilise la distance et le dénivelé communiqué par l’organisateur du trail. Une “distance à plat” est estimée en additionnant la distance et le dénivelé positif. Seul le chrono final est pris en compte dans le calcul de la cote ITRA, le classement n’a donc pas d’importance.
+
+Nous avons par la suite réalisé une analyse statistique des différentes variables pour les coureurs dont la côte ITRA est inférieure ou égale à 500 contre ceux dont la côte est supérieure à 500. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Mise en forme des données pour l'analyse en fontion de la côte ITRA
+dataITRA = data2
+dataITRA$ITRA_rating_gp = dataITRA$ITRA_rating
+dataITRA = dataITRA[-14]
+
+# Création de deux groupes de côte ITRA : inférieur ou supérieur à 500
+dataITRA$ITRA_rating_gp = ifelse(dataITRA$ITRA_rating_gp <= 500, "ITRA < ou = à 500", "ITRA > à 500")
+
+# Tableau d'analyse statistique des données en fonction de la côte ITRA
+ITRA = dataITRA%>% tbl_summary(by = ITRA_rating_gp, missing_text = "(Données manquantes)",
+                                    label = list(sex ~ "Sexe",
+                                                 age ~ "Age",
+                                                 weight ~ "Poids",
+                                                 max_weight ~ "Poids maximal",
+                                                 min_weight ~ "Poids minimal",
+                                                 weekly_volume_profession ~ "Volume horaire consacré à la profession",
+                                                 start_trail ~ "Nombre d'années de pratique du trail",
+                                                 #other_practice ~ "",
+                                                 time_proportion_other_practice ~ "Proportion de temps accordée à la pratique d'autres sports",
+                                                 coach_for_trail ~ "Coach pour le trail",
+                                                 heart_rate_monitor_train ~ "Port d'un cardiofréquencemètre en entrainement",
+                                                 heart_rate_monitor_competition ~ "Port d'un cardiofréquencemètre en compétition",
+                                                 connected_platform ~ "Téléchargement des données sur une plateforme connectée",
+                                                 ITRA_rating_know ~ "Connaissance de la côte ITRA",
+                                                 number_hours_practice_trail_phase_preparation ~ "Nombre d'heures d'entrainement en trail pour la préparation d'une course",
+                                                 drop_practice_trail_phase_preparation ~ "Dénivelé lors des entrainements en trail pour la préparation d'une course ",
+                                                 kilometres_practice_trail_phase_preparation ~ "Nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course",
+                                                 number_hours_training_trail_phase_preparation ~ "Nombre d'heures d'entrainement pour la préparation d'une course",
+                                                 trail_participation_last_two_seasons ~ "Participation à une ou plusieurs courses de trail lors des 2 dernières saisons",
+                                                 distance_trail_participation_last_two_seasons ~ "Distance parcourue lors des dernières courses de trail", 
+                                                 frequence_trail_participation_last_two_seasons_by_season ~ "Nombre de courses de trail par saison",
+                                                 #which_races_UT4M_2023 ~ "",
+                                                 diet ~ "Régime alimentaire",
+                                                 #which_diet ~ "",
+                                                 #which_drink_during_training ~ "",
+                                                 volume_drink_during_training ~ "Volume de boisson pendant l'entraînement",
+                                                 #which_drink_during_competition ~ "",
+                                                 volume_drink_during_competition ~ "Volume de boisson pendant une compétition",
+                                                 #which_eat_during_training ~ "",
+                                                 frequence_hours_eat_during_training ~ "Fréquence d'alimentation à l'entraînement",
+                                                 #which_eat_during_competition ~ "",
+                                                 frequence_hours_eat_during_competition ~ "Fréquence d'alimentation en compétition",
+                                                 trail_injury_illness ~ "Blessure ou maladie en lien avec la pratique du trail",
+                                                 #trail_health_problem ~ "",
+                                                 trail_health_problem_involve_no_training ~ "Problèmes de santé ayant empêché l'entraînement",
+                                                 time_trail_health_problem_involve_no_training ~ "Durée d'impossibilité de s'entraîner",
+                                                 frequence_medical_apointment_trail ~ "Fréquence des rendez-vous médicaux",
+                                                 #reason_medical_apointment_trail ~ "",
+                                                 #have_this_illness ~ "",
+                                                 smoke ~ "Fumeur régulier",
+                                                 fulfillment ~ "Epanouissement",
+                                                 priority ~ "Priorités",
+                                                 intrinsic_motivation ~ "Motivation intrinsèque",
+                                                 identified_motivation ~ "Motivation identifiée",
+                                                 integrated_motivation ~ "Motivation intégrée",
+                                                 introjected_motivation ~ "Motivation introjectée",
+                                                 external_motivation ~ "Motivation externe",
+                                                 global_mental_force ~ "Force mentale globale",
+                                                 confidence ~ "Confiance",
+                                                 consistency ~ "Consistance",
+                                                 control ~ "Contrôle",
+                                                 general_internal_speech ~ "Discours interne",
+                                                 training_internal_speech ~ "Discours interne lors de l'entraînement",
+                                                 competition_internal_speech ~ "Discours interne lors de compétition",
+                                                 general_precompetitive_anxiety ~ "Anxiété pré-compétitive",
+                                                 somatic_anxiety ~ "Anxiété somatique",
+                                                 cognitive_anxiety ~ "Anxiété cognitive",
+                                                 harmonious_hobbies ~ "Passion harmonieuse",
+                                                 obsessive_hobbies ~ "Passion obsessive",
+                                                 addiction ~ "Addiction"),
+                                    statistic = all_continuous() ~ "{mean} [{p25}, {p75}]",
+                                    missing = "no")%>%
+  add_p()  %>%
+  add_overall(col_label= "**Tous**, N = {N}")  %>%
+  modify_header(label ~ "**Variable**", p.value = "**P-valeur**")
+
+ITRA
+
+
+```
+
+
+Ce tableau nous permet très rapidement de constater qu'il n'y a pas de différences significatives entre les deux groupes pour de nombreuses variables. Nous portons un intérêt uniquement aux variables significativement différentes entre les deux groupes. 
+
+Concernant le sexe, il semble il y avoir plus de femmes avec des côtes ITRA inférieures tandis que les hommes ont des côtes ITRA plutôt supérieures à 500. Les coureurs dont la côte ITRA est inférieure à 500 sont caractérisés par un âge plus vieux et des poids plus lourds. On constate que ceux qui accordent moins de 20% à la pratique d'autres sports ont une côte ITRA  inférieure à 500, ceux qui accordent entre 20 et 50% à d'autres sport on plutôt une côte ITRA supérieure à 500.
+
+Si l'on s'intéresse désormais aux pratiques de trail des coureurs, on remarque que ceux dont les côtes sont les plus élevées s'entraînent pendant des temps plus longs, avec des dénivelés plus importants et sur des distances plus longues. globalement, ceux qui ont une côte ITRA supérieure à 500 ont un nombre d'heures d'entrainement pour la préparation d'une course plus important.
+
+La Distance parcourue lors des dernières courses de trail est supérieure à 80km pour les coureurs avec une côte ITRA supérieure à 500 et plutôt de 0 à 80 km pour les coureurs avec une côte ITRA inférieure à 500.
+
+Concernant les régimes alimentaires et l'hydratation, on remarque que les coureurs suivant un régime alimentaire ont des côtes ITRA plus élevées. Les coureurs aux côtes inférieures à 500 ont tendances à boire moins de 250ml ou plus de 500ml en entrainement et en compétition. Les coureurs avec une côte élevée boivent majoritairement tous entre 250 et 500ml par heure.
+
+Relativement aux problèmes de santé, on voit très nettement que les sportifs dont la côte ITRA est plus faible ont moins de blessures. Ces mêmes coureurs vont moins fréquemment à des rendez-vous médicaux que ceux qui ont une côte ITRA supérieure à 500.
+
+Enfin, si l'on s'intéresse aux variables psychologiques, la motivation intrinsèque, identifiée, intégrée, la force mentale sont plus importantes que les coureurs dont la côte ITRA est supérieure à 500. Chez ces coureurs, il s'agit plutôt d'une passion harmonieuse mais tend tout de même vers une addiction.
+
+# Expérience en trail
+Nous avons ensuité réalisé une analyse statistique des différentes variables pour les coureurs selon leur expérience en trail. Il y a quatre catégories : inférieur à 2 ans, entre 2 et 5 ans, entre 5 et 10 ans, et supérieur à 10 ans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Mise en forme des données pour l'analyse en fonction de l'expérience en trail
+data3=data2
+data3$start_trail_gp=data3$start_trail
+data3 = data3[-7]
+
+# Tableau d'analyse statistique des données en fonction de l'expérience en trail
+Experience = data3%>% tbl_summary(by = start_trail_gp, missing_text = "(Données manquantes)",
+                            label = list(sex ~ "Sexe",
+                                         age ~ "Age",
+                                         weight ~ "Poids",
+                                         max_weight ~ "Poids maximal",
+                                         min_weight ~ "Poids minimal",
+                                         weekly_volume_profession ~ "Volume horaire consacré à la profession",
+                                         # start_trail ~ "Nombre d'années de pratique du trail",
+                                         #other_practice ~ "",
+                                         time_proportion_other_practice ~ "Proportion de temps accordée à la pratique d'autres sports",
+                                         coach_for_trail ~ "Coach pour le trail",
+                                         heart_rate_monitor_train ~ "Port d'un cardiofréquencemètre en entrainement",
+                                         heart_rate_monitor_competition ~ "Port d'un cardiofréquencemètre en compétition",
+                                         connected_platform ~ "Téléchargement des données sur une plateforme connectée",
+                                         ITRA_rating ~ "Côte ITRA",
+                                         ITRA_rating_know ~ "Connaissance de la côte ITRA",
+                                         number_hours_practice_trail_phase_preparation ~ "Nombre d'heures d'entrainement en trail pour la préparation d'une course",
+                                         drop_practice_trail_phase_preparation ~ "Dénivelé lors des entrainements en trail pour la préparation d'une course ",
+                                         kilometres_practice_trail_phase_preparation ~ "Nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course",
+                                         number_hours_training_trail_phase_preparation ~ "Nombre d'heures d'entrainement pour la préparation d'une course",
+                                         trail_participation_last_two_seasons ~ "Participation à une ou plusieurs courses de trail lors des 2 dernières saisons",
+                                         distance_trail_participation_last_two_seasons ~ "Distance parcourue lors des dernières courses de trail", 
+                                         frequence_trail_participation_last_two_seasons_by_season ~ "Nombre de courses de trail par saison",
+                                         #which_races_UT4M_2023 ~ "",
+                                         diet ~ "Régime alimentaire",
+                                         #which_diet ~ "",
+                                         #which_drink_during_training ~ "",
+                                         volume_drink_during_training ~ "Volume de boisson pendant l'entraînement",
+                                         #which_drink_during_competition ~ "",
+                                         volume_drink_during_competition ~ "Volume de boisson pendant une compétition",
+                                         #which_eat_during_training ~ "",
+                                         frequence_hours_eat_during_training ~ "Fréquence d'alimentation à l'entraînement",
+                                         #which_eat_during_competition ~ "",
+                                         frequence_hours_eat_during_competition ~ "Fréquence d'alimentation en compétition",
+                                         trail_injury_illness ~ "Blessure ou maladie en lien avec la pratique du trail",
+                                         #trail_health_problem ~ "",
+                                         trail_health_problem_involve_no_training ~ "Problèmes de santé ayant empêché l'entraînement",
+                                         time_trail_health_problem_involve_no_training ~ "Durée d'impossibilité de s'entraîner",
+                                         frequence_medical_apointment_trail ~ "Fréquence des rendez-vous médicaux",
+                                         #reason_medical_apointment_trail ~ "",
+                                         #have_this_illness ~ "",
+                                         smoke ~ "Fumeur régulier",
+                                         fulfillment ~ "Epanouissement",
+                                         priority ~ "Priorités",
+                                         intrinsic_motivation ~ "Motivation intrinsèque",
+                                         identified_motivation ~ "Motivation identifiée",
+                                         integrated_motivation ~ "Motivation intégrée",
+                                         introjected_motivation ~ "Motivation introjectée",
+                                         external_motivation ~ "Motivation externe",
+                                         global_mental_force ~ "Force mentale globale",
+                                         confidence ~ "Confiance",
+                                         consistency ~ "Consistance",
+                                         control ~ "Contrôle",
+                                         general_internal_speech ~ "Discours interne",
+                                         training_internal_speech ~ "Discours interne lors de l'entraînement",
+                                         competition_internal_speech ~ "Discours interne lors de compétition",
+                                         general_precompetitive_anxiety ~ "Anxiété pré-compétitive",
+                                         somatic_anxiety ~ "Anxiété somatique",
+                                         cognitive_anxiety ~ "Anxiété cognitive",
+                                         harmonious_hobbies ~ "Passion harmonieuse",
+                                         obsessive_hobbies ~ "Passion obsessive",
+                                         addiction ~ "Addiction"),
+                            statistic = all_continuous() ~ "{mean} [{p25}, {p75}]",
+                            missing = "no")%>%
+  add_p()  %>%
+  add_overall(col_label= "**Tous**, N = {N}")  %>%
+  modify_header(label ~ "**Variable**", p.value = "**P-valeur**")
+
+Experience
+```
+
+Ce tableau nous permet très rapidement de constater qu'il n'y a pas de différences significatives entre les deux groupes pour de nombreuses variables. Nous portons un intérêt uniquement aux variables significativement différentes entre les deux groupes. 
+
+Concernant l'âge, on observe que l'expérience croit avec l'âge. La plupart des coureurs travaillent entre 36 et 45 heures par semaine et davantage ceux qui pratiquent le trail depuis moins de 10 ans.
+
+Les coureurs qui sollicitent un coach pour le trail sont ceux qui ont 2 à 10 ans d'expérience. Ceux qui utilisent un cardiofréquencemètre et téléchargent leurs données de courses sur une plateforme ont majoritairement entre 2 et 5 ans d'expérience en trail.
+
+Les coureurs qui font du trail depuis 2 à 10 ans, connaissent majoritairement mieux leur côte ITRA. Avec ceux qui ont plus de 10 ans d'expérience, ils ont participé davanatge à une ou plusieurs courses de trail lors des deux dernières saisons. Les coureurs ayant débuté le trail depuis moins de 5 ans s'inscrivent majoritairement à des courses de moins de 40km alors que ceux qui pratiquent le trail depuis plus de 5 ans courent majoritairement entre 40 et 80km.
+
+Concernant les blessures ou les maladies en lien avec le trail, les personnes blessées sont majoritairement celles qui font du trail depuis moins longtemps et qui ont donc moins d'expérience.
+
+Enfin, les coureurs qui font du trail depuis moins de 5 ans ont globalement une force mentale, une consistance et un contrôle plus élevés. Les coureurs qui ont entre 5 et 10 ans d'expérience en trail ont un sens des priorités plus important et pour terminer, ceux qui font du trail depuis plus de 10 ans sont moins anxieux et ont moins de problème d'addiction que les autres coureurs.
+
+# Blessure
+
+Pour terminer, nous avons réalisé une analyse statistique des différentes variables pour les coureurs ayant eu une blessure liée au trail dans l'année ou non. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ # Mise en forme des données pour l'analyse en fonction de la blessure
+datablessure = data2
+datablessure$trail_injury_illness_gp = datablessure$trail_injury_illness
+datablessure = datablessure[-27]
+datablessure$trail_injury_illness_gp = ifelse(datablessure$trail_injury_illness_gp == "Oui", "Blessure", "Aucune blessure")
+
+# Tableau d'analyse statistique des données en fonction de la blessure
+Blessure = datablessure%>% tbl_summary(by = trail_injury_illness_gp, missing_text = "(Données manquantes)",
+                            label = list(sex ~ "Sexe",
+                                         age ~ "Age",
+                                         weight ~ "Poids",
+                                         max_weight ~ "Poids maximal",
+                                         min_weight ~ "Poids minimal",
+                                         weekly_volume_profession ~ "Volume horaire consacré à la profession",
+                                         start_trail ~ "Nombre d'années de pratique du trail",
+                                         #other_practice ~ "",
+                                         time_proportion_other_practice ~ "Proportion de temps accordée à la pratique d'autres sports",
+                                         coach_for_trail ~ "Coach pour le trail",
+                                         heart_rate_monitor_train ~ "Port d'un cardiofréquencemètre en entrainement",
+                                         heart_rate_monitor_competition ~ "Port d'un cardiofréquencemètre en compétition",
+                                         connected_platform ~ "Téléchargement des données sur une plateforme connectée",
+                                         ITRA_rating ~ "Côte ITRA",
+                                         ITRA_rating_know ~ "Connaissance de la côte ITRA",
+                                         number_hours_practice_trail_phase_preparation ~ "Nombre d'heures d'entrainement en trail pour la préparation d'une course",
+                                         drop_practice_trail_phase_preparation ~ "Dénivelé lors des entrainements en trail pour la préparation d'une course ",
+                                         kilometres_practice_trail_phase_preparation ~ "Nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course",
+                                         number_hours_training_trail_phase_preparation ~ "Nombre d'heures d'entrainement pour la préparation d'une course",
+                                         trail_participation_last_two_seasons ~ "Participation à une ou plusieurs courses de trail lors des 2 dernières saisons",
+                                         distance_trail_participation_last_two_seasons ~ "Distance parcourue lors des dernières courses de trail", 
+                                         frequence_trail_participation_last_two_seasons_by_season ~ "Nombre de courses de trail par saison",
+                                         #which_races_UT4M_2023 ~ "",
+                                         diet ~ "Régime alimentaire",
+                                         #which_diet ~ "",
+                                         #which_drink_during_training ~ "",
+                                         volume_drink_during_training ~ "Volume de boisson pendant l'entraînement",
+                                         #which_drink_during_competition ~ "",
+                                         volume_drink_during_competition ~ "Volume de boisson pendant une compétition",
+                                         #which_eat_during_training ~ "",
+                                         frequence_hours_eat_during_training ~ "Fréquence d'alimentation à l'entraînement",
+                                         #which_eat_during_competition ~ "",
+                                         frequence_hours_eat_during_competition ~ "Fréquence d'alimentation en compétition",
+                                         #trail_health_problem ~ "",
+                                         trail_health_problem_involve_no_training ~ "Problèmes de santé ayant empêché l'entraînement",
+                                         time_trail_health_problem_involve_no_training ~ "Durée d'impossibilité de s'entraîner",
+                                         frequence_medical_apointment_trail ~ "Fréquence des rendez-vous médicaux",
+                                         #reason_medical_apointment_trail ~ "",
+                                         #have_this_illness ~ "",
+                                         smoke ~ "Fumeur régulier",
+                                         fulfillment ~ "Epanouissement",
+                                         priority ~ "Priorités",
+                                         intrinsic_motivation ~ "Motivation intrinsèque",
+                                         identified_motivation ~ "Motivation identifiée",
+                                         integrated_motivation ~ "Motivation intégrée",
+                                         introjected_motivation ~ "Motivation introjectée",
+                                         external_motivation ~ "Motivation externe",
+                                         global_mental_force ~ "Force mentale globale",
+                                         confidence ~ "Confiance",
+                                         consistency ~ "Consistance",
+                                         control ~ "Contrôle",
+                                         general_internal_speech ~ "Discours interne",
+                                         training_internal_speech ~ "Discours interne lors de l'entraînement",
+                                         competition_internal_speech ~ "Discours interne lors de compétition",
+                                         general_precompetitive_anxiety ~ "Anxiété pré-compétitive",
+                                         somatic_anxiety ~ "Anxiété somatique",
+                                         cognitive_anxiety ~ "Anxiété cognitive",
+                                         harmonious_hobbies ~ "Passion harmonieuse",
+                                         obsessive_hobbies ~ "Passion obsessive",
+                                         addiction ~ "Addiction",
+                                         do_not_finish ~ "Abandon"),
+                            statistic = all_continuous() ~ "{mean} [{p25}, {p75}]",
+                            missing = "no")%>%
+  add_p()  %>%
+  add_overall(col_label= "**Tous**, N = {N}")  %>%
+  modify_header(label ~ "**Variable**", p.value = "**P-valeur**")
+
+Blessure
+```
+
+Ce tableau nous permet très rapidement de constater qu'il n'y a pas de différences significatives entre les deux groupes pour de nombreuses variables. Nous portons un intérêt uniquement aux variables significativement différentes entre les deux groupes. 
+
+Aucune caractéristique physique n'est significativement différente entre les deux groupes. Les coureurs pratiquant le trail depuis plus longtemps semblent moins se blesser. Etonnement, les coureurs suivis par un coach ont plus été blessés que les autres. 
+
+Si l'on s'intéresse désormais aux pratiques de trail des coureurs, mais aussi aux régimes alimentaires et à l'hydratation, on ne relève aucune caractéristique significativement différente entre les deux groupes.
+
+Relativement aux problèmes de santé, on voit très nettement que les sportifs ayant connu des blessures ont consulté des personnels de santé un plus grand nombre de fois que les autres coureurs.
+
+Enfin, si l'on s'intéresse aux variables psychologiques, les priorités, la motivation introjectée sont supérieures chez les individus ayant connu des blessures. Ce sont également ces coureurs pour lesquels le trail tend plus vers une addiction.
+
+
+# Abandon
+
+```{r}
+# Mise en forme des données pour l'analyse en fonction de l'abandon
+dataabandon = data2
+dataabandon$abandon_gp = dataabandon$do_not_finish
+dataabandon = dataabandon[-52]
+dataabandon$abandon_gp = ifelse(dataabandon$abandon_gp == "oui", "Abandon", "Finisher")
+
+# Tableau d'analyse statistique des données en fonction de l'abandon
+Abandon = dataabandon%>% tbl_summary(by = abandon_gp, missing_text = "(Données manquantes)",
+                            label = list(sex ~ "Sexe",
+                                         age ~ "Age",
+                                         weight ~ "Poids",
+                                         max_weight ~ "Poids maximal",
+                                         min_weight ~ "Poids minimal",
+                                         weekly_volume_profession ~ "Volume horaire consacré à la profession",
+                                         start_trail ~ "Nombre d'années de pratique du trail",
+                                         #other_practice ~ "",
+                                         time_proportion_other_practice ~ "Proportion de temps accordée à la pratique d'autres sports",
+                                         coach_for_trail ~ "Coach pour le trail",
+                                         heart_rate_monitor_train ~ "Port d'un cardiofréquencemètre en entrainement",
+                                         heart_rate_monitor_competition ~ "Port d'un cardiofréquencemètre en compétition",
+                                         connected_platform ~ "Téléchargement des données sur une plateforme connectée",
+                                         ITRA_rating ~ "Côte ITRA",
+                                         ITRA_rating_know ~ "Connaissance de la côte ITRA",
+                                         number_hours_practice_trail_phase_preparation ~ "Nombre d'heures d'entrainement en trail pour la préparation d'une course",
+                                         drop_practice_trail_phase_preparation ~ "Dénivelé lors des entrainements en trail pour la préparation d'une course ",
+                                         kilometres_practice_trail_phase_preparation ~ "Nombre de kilomètres parcourus pour l'entraînement en trail pour la préparation d'une course",
+                                         number_hours_training_trail_phase_preparation ~ "Nombre d'heures d'entrainement pour la préparation d'une course",
+                                         trail_participation_last_two_seasons ~ "Participation à une ou plusieurs courses de trail lors des 2 dernières saisons",
+                                         distance_trail_participation_last_two_seasons ~ "Distance parcourue lors des dernières courses de trail", 
+                                         frequence_trail_participation_last_two_seasons_by_season ~ "Nombre de courses de trail par saison",
+                                         #which_races_UT4M_2023 ~ "",
+                                         diet ~ "Régime alimentaire",
+                                         #which_diet ~ "",
+                                         #which_drink_during_training ~ "",
+                                         volume_drink_during_training ~ "Volume de boisson pendant l'entraînement",
+                                         #which_drink_during_competition ~ "",
+                                         volume_drink_during_competition ~ "Volume de boisson pendant une compétition",
+                                         #which_eat_during_training ~ "",
+                                         frequence_hours_eat_during_training ~ "Fréquence d'alimentation à l'entraînement",
+                                         #which_eat_during_competition ~ "",
+                                         frequence_hours_eat_during_competition ~ "Fréquence d'alimentation en compétition",
+                                         #trail_health_problem ~ "",
+                                         trail_injury_illness ~ "Blessure ou maladie en lien avec la pratique du trail",
+                                         trail_health_problem_involve_no_training ~ "Problèmes de santé ayant empêché l'entraînement",
+                                         time_trail_health_problem_involve_no_training ~ "Durée d'impossibilité de s'entraîner",
+                                         frequence_medical_apointment_trail ~ "Fréquence des rendez-vous médicaux",
+                                         #reason_medical_apointment_trail ~ "",
+                                         #have_this_illness ~ "",
+                                         smoke ~ "Fumeur régulier",
+                                         fulfillment ~ "Epanouissement",
+                                         priority ~ "Priorités",
+                                         intrinsic_motivation ~ "Motivation intrinsèque",
+                                         identified_motivation ~ "Motivation identifiée",
+                                         integrated_motivation ~ "Motivation intégrée",
+                                         introjected_motivation ~ "Motivation introjectée",
+                                         external_motivation ~ "Motivation externe",
+                                         global_mental_force ~ "Force mentale globale",
+                                         confidence ~ "Confiance",
+                                         consistency ~ "Consistance",
+                                         control ~ "Contrôle",
+                                         general_internal_speech ~ "Discours interne",
+                                         training_internal_speech ~ "Discours interne lors de l'entraînement",
+                                         competition_internal_speech ~ "Discours interne lors de compétition",
+                                         general_precompetitive_anxiety ~ "Anxiété pré-compétitive",
+                                         somatic_anxiety ~ "Anxiété somatique",
+                                         cognitive_anxiety ~ "Anxiété cognitive",
+                                         harmonious_hobbies ~ "Passion harmonieuse",
+                                         obsessive_hobbies ~ "Passion obsessive",
+                                         addiction ~ "Addiction"),
+                            statistic = all_continuous() ~ "{mean} [{p25}, {p75}]",
+                            missing = "no")%>%
+  add_p()  %>%
+  add_overall(col_label= "**Tous**, N = {N}")  %>%
+  modify_header(label ~ "**Variable**", p.value = "**P-valeur**")
+
+Abandon
+```
